@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 3.3.1
+ * Version: 4.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '3.3.1';
+    const VERSION = '4.0.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -428,12 +428,12 @@ final class MFSD_Personality_Test {
         if ($disc_count > 0) $test_types[] = 'DISC';
         $test_type_str = implode(' and ', $test_types);
 
-        $prompt = "You are a friendly educational assistant for students aged 12-14. Generate a brief, encouraging introduction (2-3 sentences) for a personality test. The test includes {$test_type_str} with {$total} total questions. Keep it light, fun, and reassuring that there are no wrong answers. Make it engaging for young teens.";
+        $prompt = "You are Steve Sallis, a friendly motivational teacher-coach for students aged 12-14 working on their High Performance Pathway. Generate a brief, encouraging introduction (2-3 sentences) for a personality test. The test includes {$test_type_str} with {$total} total questions. Keep it light, fun, and reassuring that there are no wrong answers. Make it engaging for young teens. Start your message with 'Steve says:' and keep the tone warm and encouraging.";
 
         $intro_message = $this->call_ai($prompt);
 
         if (!$intro_message) {
-            $intro_message = "Welcome to your Week {$week} Personality Test! You'll answer {$total} questions about {$test_type_str}. This is just for fun to help you understand yourself better - there are no wrong answers!";
+            $intro_message = "Steve says: Welcome to your Week {$week} Personality Test! You'll answer {$total} questions about {$test_type_str}. This is just for fun to help you understand yourself better - there are no wrong answers!";
         }
 
         return array(
@@ -450,13 +450,13 @@ final class MFSD_Personality_Test {
         $question_text = $req->get_param('question_text');
         $q_type = $req->get_param('q_type');
 
-        $prompt = "You are helping a 12-14 year old student understand a personality test question. The question is: '{$question_text}'. Provide a brief (2-3 sentences) explanation to help them understand what the question is asking. Keep it simple, relatable, and age-appropriate.";
+        $prompt = "You are Steve Sallis, a motivational teacher-coach helping a 12-14 year old student understand a personality test question. The question is: '{$question_text}'. Provide a brief (2-3 sentences) explanation to help them understand what the question is asking. Start with 'Steve says:' and keep it simple, relatable, and age-appropriate. Use your encouraging, positive coaching style.";
 
         $guidance = $this->call_ai($prompt);
 
         return array(
             'ok' => true,
-            'guidance' => $guidance ?: 'Think about how you naturally behave in everyday situations.'
+            'guidance' => $guidance ?: 'Steve says: Think about how you naturally behave in everyday situations.'
         );
     }
 
@@ -464,13 +464,13 @@ final class MFSD_Personality_Test {
         $user_message = $req->get_param('message');
         $question_text = $req->get_param('question_text');
 
-        $prompt = "You are a helpful tutor for 12-14 year olds. A student is working on this personality test question: '{$question_text}'. They asked: '{$user_message}'. Provide a brief, helpful answer that helps them understand the question better. Keep it friendly and age-appropriate.";
+        $prompt = "You are SteveGPT, the AI version of Steve Sallis - a motivational teacher-coach for 12-14 year olds working on their High Performance Pathway. A student is working on this personality test question: '{$question_text}'. They asked: '{$user_message}'. Provide a brief, helpful answer that helps them understand the question better. Keep it friendly, encouraging, and age-appropriate. Sign your response with '- SteveGPT' at the end.";
 
         $response = $this->call_ai($prompt);
 
         return array(
             'ok' => true,
-            'response' => $response ?: 'I understand you need help. Try thinking about how you usually act in similar situations.'
+            'response' => $response ?: 'I understand you need help. Try thinking about how you usually act in similar situations. - SteveGPT'
         );
     }
 
@@ -653,7 +653,7 @@ final class MFSD_Personality_Test {
     }
 
     private function build_summary_prompt($mbti_type, $disc_scores, $week) {
-        $prompt = "You are an educational counselor providing personality test results to a 12-14 year old student. ";
+        $prompt = "You are Steve Sallis, a motivational teacher-coach providing personality test results to a 12-14 year old student on their High Performance Pathway. ";
         $prompt .= "This is their Week {$week} personality assessment results.\n\n";
 
         if ($mbti_type) {
@@ -684,23 +684,26 @@ final class MFSD_Personality_Test {
         }
 
         $prompt .= "=== YOUR TASK ===\n";
-        $prompt .= "Based on this comprehensive personality profile, write a warm, personal, and encouraging summary (6-8 sentences) that:\n\n";
-        $prompt .= "1. Opens with a warm greeting that acknowledges their unique personality type\n";
-        $prompt .= "2. Explains what their results mean in simple, relatable terms they can understand\n";
-        $prompt .= "3. Highlights their natural strengths and talents with specific examples\n";
-        $prompt .= "4. Gives practical, actionable advice for school success based on their learning style\n";
-        $prompt .= "5. Explains how they naturally interact with friends and how to build great friendships\n";
-        $prompt .= "6. Suggests specific activities, subjects, or roles where they might excel\n";
-        $prompt .= "7. Acknowledges any growth areas gently and positively, framing them as opportunities\n";
-        $prompt .= "8. Ends with an encouraging message that all personality types are valuable and needed\n\n";
+        $prompt .= "Based on this comprehensive personality profile, write a warm, personal, and encouraging summary as Steve Sallis that:\n\n";
+        $prompt .= "1. STARTS with 'Steve says:' at the very beginning\n";
+        $prompt .= "2. Opens with a warm greeting that acknowledges their unique personality type (4-5 paragraphs total)\n";
+        $prompt .= "3. Explains what their results mean in simple, relatable terms they can understand\n";
+        $prompt .= "4. Highlights their natural strengths and talents with specific examples\n";
+        $prompt .= "5. Gives practical, actionable advice for school success based on their learning style\n";
+        $prompt .= "6. Explains how they naturally interact with friends and how to build great friendships\n";
+        $prompt .= "7. Suggests specific activities, subjects, or roles where they might excel\n";
+        $prompt .= "8. Acknowledges any growth areas gently and positively, framing them as opportunities\n";
+        $prompt .= "9. Ends with an encouraging message that all personality types are valuable and needed\n";
+        $prompt .= "10. ENDS with '- Steve' as the signature on a new line\n\n";
         $prompt .= "IMPORTANT GUIDELINES:\n";
         $prompt .= "- Write in second person (\"You are...\" \"Your strength is...\")\n";
-        $prompt .= "- Use warm, encouraging, conversational tone\n";
+        $prompt .= "- Use Steve Sallis's warm, encouraging, motivational coaching style\n";
         $prompt .= "- Be specific and personal, not generic\n";
         $prompt .= "- Use relatable examples from teen life (school, friends, hobbies, sports)\n";
         $prompt .= "- Keep language simple and age-appropriate for 12-14 year olds\n";
         $prompt .= "- Be positive but authentic - don't oversell or sound fake\n";
         $prompt .= "- Make them feel understood, valued, and excited about who they are\n";
+        $prompt .= "- Remember: START with 'Steve says:' and END with '- Steve'\n";
 
         return $prompt;
     }
@@ -933,7 +936,7 @@ final class MFSD_Personality_Test {
     }
 
     private function generate_fallback_summary($mbti_type, $disc_scores, $week) {
-        $summary = "Welcome to your Week {$week} personality results! ";
+        $summary = "Steve says: Welcome to your Week {$week} personality results! ";
         
         if ($mbti_type) {
             $mbti_context = $this->get_mbti_type_context($mbti_type);
@@ -949,6 +952,8 @@ final class MFSD_Personality_Test {
             $summary .= $disc_context['characteristics'] . " ";
             $summary .= $disc_context['advice'];
         }
+        
+        $summary .= "\n\n- Steve";
         
         return $summary;
     }
