@@ -576,9 +576,35 @@
         card.appendChild(summaryBox);
       }
 
-      const backBtn = el("button","rag-btn","Back to Start");
-      backBtn.onclick = () => window.location.reload();
-      card.appendChild(backBtn);
+      // Add context-aware chatbot for questions about results
+      if (chatSource) {
+        const chatWrap = el("div","rag-chatwrap");
+        const chatClone = chatSource.cloneNode(true);
+        chatClone.style.display = "block";
+        chatClone.id = "mfsd-ptest-chat-summary"; // Unique ID for summary
+        
+        // Clear any existing conversation state from the cloned chatbot
+        const chatMessages = chatClone.querySelectorAll('.mwai-conversation, .mwai-chat');
+        chatMessages.forEach(function(msg) {
+          // Remove any existing messages to start fresh
+          const msgContainer = msg.querySelector('.mwai-messages');
+          if (msgContainer) {
+            msgContainer.innerHTML = '';
+          }
+        });
+        
+        // Add a helpful prompt above the chatbot
+        const chatPrompt = el("div","");
+        chatPrompt.style.cssText = "margin: 20px 0 10px 0; padding: 15px; background: #fff9e6; border-left: 4px solid #ffc107; border-radius: 4px;";
+        const promptText = el("p","");
+        promptText.style.cssText = "margin: 0; color: #856404; font-weight: 600;";
+        promptText.textContent = "💬 Have questions about your results? Ask SteveGTP below!";
+        chatPrompt.appendChild(promptText);
+        card.appendChild(chatPrompt);
+        
+        chatWrap.appendChild(chatClone);
+        card.appendChild(chatWrap);
+      }
 
       wrap.appendChild(card);
       root.replaceChildren(wrap);
