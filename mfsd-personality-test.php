@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 3.2.0
+ * Version: 3.3.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '3.2.0';
+    const VERSION = '3.3.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -957,14 +957,15 @@ final class MFSD_Personality_Test {
         $start_time = microtime(true);
         error_log('MFSD Personality Test: Calling AI with prompt length: ' . strlen($prompt));
         
-        if (!function_exists('mwai_core')) {
-            error_log('MFSD Personality Test: MWAI plugin not available');
+        // Use same approach as RAG plugin - check for $GLOBALS['mwai']
+        if (!isset($GLOBALS['mwai'])) {
+            error_log('MFSD Personality Test: MWAI plugin not available in $GLOBALS');
             $this->log_ai_call('FAILED', 'MWAI not available', strlen($prompt), 0, 0);
             return null;
         }
 
         try {
-            $mwai = Meow_MWAI_Core::get_instance();
+            $mwai = $GLOBALS['mwai'];
             $result = $mwai->simpleTextQuery($prompt);
             
             $elapsed = round((microtime(true) - $start_time) * 1000);

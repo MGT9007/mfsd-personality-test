@@ -489,7 +489,7 @@
             echo '<h3>AI Test Results</h3>';
             
             // Check if MWAI is available
-            if (!function_exists('mwai_core')) {
+            if (!isset($GLOBALS['mwai'])) {
                 echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Available</strong></p>';
                 echo '<p>The AI Engine plugin is not active or not installed.</p>';
             } else {
@@ -585,17 +585,17 @@
         <div class="ptest-add-form">
             <h3>MWAI Plugin Status</h3>
             <?php
-            if (!function_exists('mwai_core')) {
+            if (!isset($GLOBALS['mwai'])) {
                 echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Detected</strong></p>';
                 echo '<p>Please install and activate the <strong>AI Engine</strong> plugin.</p>';
             } else {
                 echo '<p style="color: green;"><strong>✅ MWAI Plugin Detected</strong></p>';
                 
                 try {
-                    $mwai = Meow_MWAI_Core::get_instance();
-                    echo '<p style="color: green;"><strong>✅ MWAI Core Instance Available</strong></p>';
+                    $mwai = $GLOBALS['mwai'];
+                    echo '<p style="color: green;"><strong>✅ MWAI Instance Available via $GLOBALS</strong></p>';
                 } catch (Exception $e) {
-                    echo '<p style="color: red;"><strong>❌ Cannot get MWAI instance</strong></p>';
+                    echo '<p style="color: red;"><strong>❌ Cannot access MWAI instance</strong></p>';
                     echo '<p>Error: ' . htmlspecialchars($e->getMessage()) . '</p>';
                 }
             }
