@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 2.0.0
+ * Version: 3.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '2.0.0';
+    const VERSION = '3.0.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -477,11 +477,41 @@ final class MFSD_Personality_Test {
     public function api_summary($req) {
         $user_id = get_current_user_id();
         $week = (int) $req->get_param('week');
+        $force_regenerate = $req->get_param('force_regenerate') === 'true';
 
         global $wpdb;
         $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
         $res_table = $wpdb->prefix . self::TBL_RESULTS;
 
+        // Check if caching is enabled
+        $cache_enabled = get_option('mfsd_ptest_cache_ai_summaries', '1') === '1';
+
+        // If caching is enabled and not forcing regeneration, check for existing results
+        if ($cache_enabled && !$force_regenerate) {
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED'",
+                $user_id, $week
+            ), ARRAY_A);
+
+            if ($existing && !empty($existing['ai_summary'])) {
+                // Return cached results
+                return array(
+                    'ok' => true,
+                    'mbti_type' => $existing['mbti_type'],
+                    'disc_scores' => array(
+                        'D' => (float)$existing['disc_d_score'],
+                        'I' => (float)$existing['disc_i_score'],
+                        'S' => (float)$existing['disc_s_score'],
+                        'C' => (float)$existing['disc_c_score'],
+                        'primary' => $existing['disc_primary']
+                    ),
+                    'ai_summary' => $existing['ai_summary'],
+                    'cached' => true
+                );
+            }
+        }
+
+        // Generate new results (either cache disabled or no cached results exist)
         $mbti_answers = $wpdb->get_results($wpdb->prepare(
             "SELECT mbti_axis, mbti_letter, answer FROM $ans_table 
              WHERE user_id = %d AND week_num = %d AND q_type = 'MBTI'",
@@ -501,50 +531,54 @@ final class MFSD_Personality_Test {
         $summary_prompt = $this->build_summary_prompt($mbti_type, $disc_scores, $week);
         $ai_summary = $this->call_ai($summary_prompt);
 
-        if ($mbti_type) {
+        // Save results if caching is enabled
+        if ($cache_enabled) {
+            if ($mbti_type) {
+                $wpdb->replace($res_table, array(
+                    'user_id' => $user_id,
+                    'week_num' => $week,
+                    'test_type' => 'MBTI',
+                    'mbti_type' => $mbti_type,
+                    'mbti_details' => json_encode(array('raw_answers' => $mbti_answers)),
+                    'ai_summary' => $ai_summary,
+                ));
+            }
+
+            if ($disc_scores) {
+                $wpdb->replace($res_table, array(
+                    'user_id' => $user_id,
+                    'week_num' => $week,
+                    'test_type' => 'DISC',
+                    'disc_d_score' => $disc_scores['D'],
+                    'disc_i_score' => $disc_scores['I'],
+                    'disc_s_score' => $disc_scores['S'],
+                    'disc_c_score' => $disc_scores['C'],
+                    'disc_primary' => $disc_scores['primary'],
+                    'disc_details' => json_encode($disc_scores),
+                    'ai_summary' => $ai_summary,
+                ));
+            }
+
             $wpdb->replace($res_table, array(
                 'user_id' => $user_id,
                 'week_num' => $week,
-                'test_type' => 'MBTI',
+                'test_type' => 'COMBINED',
                 'mbti_type' => $mbti_type,
-                'mbti_details' => json_encode(array('raw_answers' => $mbti_answers)),
+                'disc_d_score' => $disc_scores['D'] ?? null,
+                'disc_i_score' => $disc_scores['I'] ?? null,
+                'disc_s_score' => $disc_scores['S'] ?? null,
+                'disc_c_score' => $disc_scores['C'] ?? null,
+                'disc_primary' => $disc_scores['primary'] ?? null,
                 'ai_summary' => $ai_summary,
             ));
         }
-
-        if ($disc_scores) {
-            $wpdb->replace($res_table, array(
-                'user_id' => $user_id,
-                'week_num' => $week,
-                'test_type' => 'DISC',
-                'disc_d_score' => $disc_scores['D'],
-                'disc_i_score' => $disc_scores['I'],
-                'disc_s_score' => $disc_scores['S'],
-                'disc_c_score' => $disc_scores['C'],
-                'disc_primary' => $disc_scores['primary'],
-                'disc_details' => json_encode($disc_scores),
-                'ai_summary' => $ai_summary,
-            ));
-        }
-
-        $wpdb->replace($res_table, array(
-            'user_id' => $user_id,
-            'week_num' => $week,
-            'test_type' => 'COMBINED',
-            'mbti_type' => $mbti_type,
-            'disc_d_score' => $disc_scores['D'] ?? null,
-            'disc_i_score' => $disc_scores['I'] ?? null,
-            'disc_s_score' => $disc_scores['S'] ?? null,
-            'disc_c_score' => $disc_scores['C'] ?? null,
-            'disc_primary' => $disc_scores['primary'] ?? null,
-            'ai_summary' => $ai_summary,
-        ));
 
         return array(
             'ok' => true,
             'mbti_type' => $mbti_type,
             'disc_scores' => $disc_scores,
-            'ai_summary' => $ai_summary
+            'ai_summary' => $ai_summary,
+            'cached' => false
         );
     }
 
@@ -944,6 +978,46 @@ final class MFSD_Personality_Test {
             check_admin_referer('mfsd_ptest_delete_' . $_GET['delete_question']);
             $wpdb->delete($table, array('id' => (int)$_GET['delete_question']));
             echo '<div class="notice notice-success"><p>Question deleted.</p></div>';
+        }
+
+        if (isset($_POST['mfsd_ptest_save_settings'])) {
+            check_admin_referer('mfsd_ptest_settings');
+            update_option('mfsd_ptest_cache_ai_summaries', isset($_POST['cache_ai_summaries']) ? '1' : '0');
+            echo '<div class="notice notice-success"><p>Settings saved successfully!</p></div>';
+        }
+
+        if (isset($_POST['mfsd_ptest_clear_user_data'])) {
+            check_admin_referer('mfsd_ptest_clear_user');
+            
+            $user_id = (int)$_POST['user_id'];
+            $week = isset($_POST['week']) ? (int)$_POST['week'] : 0;
+            
+            $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
+            $res_table = $wpdb->prefix . self::TBL_RESULTS;
+            
+            if ($week > 0) {
+                $wpdb->delete($ans_table, array('user_id' => $user_id, 'week_num' => $week));
+                $wpdb->delete($res_table, array('user_id' => $user_id, 'week_num' => $week));
+                echo '<div class="notice notice-success"><p>Cleared Week ' . $week . ' data for User ID ' . $user_id . '</p></div>';
+            } else {
+                $wpdb->delete($ans_table, array('user_id' => $user_id));
+                $wpdb->delete($res_table, array('user_id' => $user_id));
+                echo '<div class="notice notice-success"><p>Cleared all test data for User ID ' . $user_id . '</p></div>';
+            }
+        }
+
+        if (isset($_POST['mfsd_ptest_clear_all_data'])) {
+            check_admin_referer('mfsd_ptest_clear_all');
+            if ($_POST['confirm_clear'] === 'DELETE ALL DATA') {
+                $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
+                $res_table = $wpdb->prefix . self::TBL_RESULTS;
+                
+                $wpdb->query("TRUNCATE TABLE $ans_table");
+                $wpdb->query("TRUNCATE TABLE $res_table");
+                echo '<div class="notice notice-success"><p><strong>All test data has been cleared!</strong></p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>Incorrect confirmation text. Data was not cleared.</p></div>';
+            }
         }
 
         $questions = $wpdb->get_results("SELECT * FROM $table ORDER BY q_type, q_order", ARRAY_A);
