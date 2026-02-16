@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 3.1.0
+ * Version: 3.2.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '3.1.0';
+    const VERSION = '3.2.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -954,10 +954,12 @@ final class MFSD_Personality_Test {
     }
 
     private function call_ai($prompt) {
+        $start_time = microtime(true);
         error_log('MFSD Personality Test: Calling AI with prompt length: ' . strlen($prompt));
         
         if (!function_exists('mwai_core')) {
             error_log('MFSD Personality Test: MWAI plugin not available');
+            $this->log_ai_call('FAILED', 'MWAI not available', strlen($prompt), 0, 0);
             return null;
         }
 
@@ -965,14 +967,38 @@ final class MFSD_Personality_Test {
             $mwai = Meow_MWAI_Core::get_instance();
             $result = $mwai->simpleTextQuery($prompt);
             
-            error_log('MFSD Personality Test: AI response length: ' . strlen($result));
+            $elapsed = round((microtime(true) - $start_time) * 1000);
+            error_log('MFSD Personality Test: AI response length: ' . strlen($result) . ' (took ' . $elapsed . 'ms)');
+            
+            $this->log_ai_call('SUCCESS', 'AI call successful', strlen($prompt), strlen($result), $elapsed);
             
             return $result;
         } catch (Exception $e) {
+            $elapsed = round((microtime(true) - $start_time) * 1000);
             error_log('MFSD Personality Test AI Error: ' . $e->getMessage());
             error_log('MFSD Personality Test AI Error Trace: ' . $e->getTraceAsString());
+            
+            $this->log_ai_call('ERROR', $e->getMessage(), strlen($prompt), 0, $elapsed);
+            
             return null;
         }
+    }
+    
+    private function log_ai_call($status, $message, $prompt_length, $response_length, $elapsed_ms) {
+        $log_entry = array(
+            'timestamp' => current_time('mysql'),
+            'status' => $status,
+            'message' => $message,
+            'prompt_length' => $prompt_length,
+            'response_length' => $response_length,
+            'elapsed_ms' => $elapsed_ms
+        );
+        
+        // Store last 10 AI calls in transient (expires in 1 day)
+        $logs = get_transient('mfsd_ptest_ai_calls') ?: array();
+        array_unshift($logs, $log_entry);
+        $logs = array_slice($logs, 0, 10);
+        set_transient('mfsd_ptest_ai_calls', $logs, DAY_IN_SECONDS);
     }
 
     public function admin_menu() {

@@ -159,6 +159,7 @@
         <button class="ptest-tab-btn" data-tab="add">Add Question</button>
         <button class="ptest-tab-btn" data-tab="settings">Settings</button>
         <button class="ptest-tab-btn" data-tab="data">Data Management</button>
+        <button class="ptest-tab-btn" data-tab="debug">AI Debug</button>
     </div>
 
     <!-- Manage Questions Tab -->
@@ -472,6 +473,175 @@
                     </button>
                 </p>
             </form>
+        </div>
+    </div>
+
+    <!-- AI Debug Tab -->
+    <div id="tab-debug" class="ptest-tab-content">
+        <h2>AI Integration Debug</h2>
+
+        <?php
+        // Handle test AI call
+        if (isset($_POST['mfsd_ptest_test_ai'])) {
+            check_admin_referer('mfsd_ptest_test_ai');
+            
+            echo '<div class="ptest-add-form" style="background: #f0f8ff; border-left: 4px solid #2271b1;">';
+            echo '<h3>AI Test Results</h3>';
+            
+            // Check if MWAI is available
+            if (!function_exists('mwai_core')) {
+                echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Available</strong></p>';
+                echo '<p>The AI Engine plugin is not active or not installed.</p>';
+            } else {
+                echo '<p style="color: green;"><strong>✅ MWAI Plugin Available</strong></p>';
+                
+                // Create a test instance to access methods
+                require_once plugin_dir_path(__FILE__) . 'mfsd-personality-test.php';
+                $test_plugin = MFSD_Personality_Test::instance();
+                
+                // Use reflection to access private methods
+                $reflection = new ReflectionClass($test_plugin);
+                $build_prompt = $reflection->getMethod('build_summary_prompt');
+                $build_prompt->setAccessible(true);
+                $call_ai = $reflection->getMethod('call_ai');
+                $call_ai->setAccessible(true);
+                
+                // Test with sample data
+                $test_mbti = 'ESTJ';
+                $test_disc = array(
+                    'D' => 45.5,
+                    'I' => 20.0,
+                    'S' => 15.5,
+                    'C' => 19.0,
+                    'primary' => 'D'
+                );
+                
+                echo '<h4>Test Parameters:</h4>';
+                echo '<p><strong>MBTI Type:</strong> ' . $test_mbti . '</p>';
+                echo '<p><strong>DISC Scores:</strong> D=' . $test_disc['D'] . '%, I=' . $test_disc['I'] . '%, S=' . $test_disc['S'] . '%, C=' . $test_disc['C'] . '%</p>';
+                
+                // Generate prompt
+                $prompt = $build_prompt->invoke($test_plugin, $test_mbti, $test_disc, 1);
+                
+                echo '<h4>Generated Prompt:</h4>';
+                echo '<p><strong>Prompt Length:</strong> ' . strlen($prompt) . ' characters</p>';
+                echo '<details style="margin: 10px 0;">';
+                echo '<summary style="cursor: pointer; font-weight: 600;">Click to view full prompt</summary>';
+                echo '<pre style="background: #f5f5f5; padding: 15px; overflow: auto; white-space: pre-wrap; font-size: 12px;">' . htmlspecialchars($prompt) . '</pre>';
+                echo '</details>';
+                
+                // Call AI
+                try {
+                    $start_time = microtime(true);
+                    $ai_response = $call_ai->invoke($test_plugin, $prompt);
+                    $elapsed = round((microtime(true) - $start_time) * 1000);
+                    
+                    echo '<h4>AI Response:</h4>';
+                    echo '<p><strong>Response Time:</strong> ' . $elapsed . 'ms</p>';
+                    
+                    if ($ai_response) {
+                        echo '<p style="color: green;"><strong>✅ AI Call Successful</strong></p>';
+                        echo '<p><strong>Response Length:</strong> ' . strlen($ai_response) . ' characters</p>';
+                        
+                        if (strlen($ai_response) < 200) {
+                            echo '<p style="color: orange;"><strong>⚠️ Warning: Response is short (< 200 chars) - fallback will be used</strong></p>';
+                        }
+                        
+                        echo '<div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;">';
+                        echo '<p><strong>AI Summary:</strong></p>';
+                        echo '<p>' . nl2br(htmlspecialchars($ai_response)) . '</p>';
+                        echo '</div>';
+                    } else {
+                        echo '<p style="color: red;"><strong>❌ AI returned null/empty - fallback will be used</strong></p>';
+                    }
+                    
+                } catch (Exception $e) {
+                    echo '<p style="color: red;"><strong>❌ AI Call Failed</strong></p>';
+                    echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
+                    echo '<details><summary>Full Error Trace</summary><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre></details>';
+                }
+            }
+            
+            echo '</div>';
+        }
+        ?>
+
+        <!-- Test AI Button -->
+        <div class="ptest-add-form">
+            <h3>Test AI Integration</h3>
+            <p>Click the button below to test if AI is working properly with sample personality data.</p>
+            
+            <form method="post" action="">
+                <?php wp_nonce_field('mfsd_ptest_test_ai'); ?>
+                <p>
+                    <button type="submit" name="mfsd_ptest_test_ai" class="button button-primary button-large">
+                        🧪 Test AI Call with Sample Data
+                    </button>
+                </p>
+            </form>
+        </div>
+
+        <!-- MWAI Status -->
+        <div class="ptest-add-form">
+            <h3>MWAI Plugin Status</h3>
+            <?php
+            if (!function_exists('mwai_core')) {
+                echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Detected</strong></p>';
+                echo '<p>Please install and activate the <strong>AI Engine</strong> plugin.</p>';
+            } else {
+                echo '<p style="color: green;"><strong>✅ MWAI Plugin Detected</strong></p>';
+                
+                try {
+                    $mwai = Meow_MWAI_Core::get_instance();
+                    echo '<p style="color: green;"><strong>✅ MWAI Core Instance Available</strong></p>';
+                } catch (Exception $e) {
+                    echo '<p style="color: red;"><strong>❌ Cannot get MWAI instance</strong></p>';
+                    echo '<p>Error: ' . htmlspecialchars($e->getMessage()) . '</p>';
+                }
+            }
+            ?>
+        </div>
+
+        <!-- Recent Test Results -->
+        <div class="ptest-add-form">
+            <h3>Recent Actual Test Results</h3>
+            <p>View the last 5 actual student test results to see what AI summaries were generated.</p>
+            
+            <?php
+            global $wpdb;
+            $res_table = $wpdb->prefix . 'mfsd_ptest_results';
+            
+            $recent = $wpdb->get_results("
+                SELECT r.*, u.user_login 
+                FROM $res_table r
+                LEFT JOIN {$wpdb->prefix}users u ON r.user_id = u.ID
+                WHERE r.test_type = 'COMBINED'
+                ORDER BY r.created_at DESC
+                LIMIT 5
+            ");
+            
+            if ($recent) {
+                foreach ($recent as $result) {
+                    echo '<div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;">';
+                    echo '<p><strong>User:</strong> ' . esc_html($result->user_login) . ' (ID: ' . $result->user_id . ')</p>';
+                    echo '<p><strong>Week:</strong> ' . $result->week_num . '</p>';
+                    echo '<p><strong>MBTI:</strong> ' . esc_html($result->mbti_type) . ' | <strong>DISC:</strong> ' . esc_html($result->disc_primary) . '</p>';
+                    echo '<p><strong>Summary Length:</strong> ' . strlen($result->ai_summary) . ' characters</p>';
+                    
+                    if (strlen($result->ai_summary) < 200) {
+                        echo '<p style="color: orange;">⚠️ Short summary - likely using fallback</p>';
+                    }
+                    
+                    echo '<details>';
+                    echo '<summary style="cursor: pointer; font-weight: 600;">View Summary</summary>';
+                    echo '<p style="margin-top: 10px; line-height: 1.6;">' . nl2br(esc_html($result->ai_summary)) . '</p>';
+                    echo '</details>';
+                    echo '</div>';
+                }
+            } else {
+                echo '<p style="font-style: italic; color: #666;">No test results yet.</p>';
+            }
+            ?>
         </div>
     </div>
 
