@@ -330,12 +330,12 @@
                 <div class="ptest-form-row">
                     <label>
                         <input type="checkbox" name="cache_ai_summaries" <?php checked($cache_ai, '1'); ?>>
-                        <strong>Cache AI Summaries</strong>
+                        <strong>Save AI Summaries to Database (Recommended)</strong>
                     </label>
                     <p style="margin-left: 25px; color: #666; font-size: 14px;">
-                        When enabled, AI summaries are saved to the database and reused when students view their results.<br>
-                        When disabled, AI summaries are regenerated fresh every time a student views their results.<br>
-                        <em>Note: Disabling this will use more AI credits but ensures summaries reflect the latest context.</em>
+                        <strong>When CHECKED (Recommended):</strong> AI summaries are saved to the database after generation and reused when students view their results. This is faster and saves AI credits.<br>
+                        <strong>When UNCHECKED (Testing Only):</strong> AI summaries are regenerated fresh every time a student views their results. Use this only when testing prompt changes - it uses more AI credits.<br>
+                        <em>💡 Leave this checked unless you're actively testing AI prompt improvements.</em>
                     </p>
                 </div>
 

@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 3.0.0
+ * Version: 3.0.1
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '3.0.0';
+    const VERSION = '3.0.1';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
