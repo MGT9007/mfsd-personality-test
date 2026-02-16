@@ -363,11 +363,52 @@
             
             $total_answers = $wpdb->get_var("SELECT COUNT(*) FROM $ans_table");
             $total_results = $wpdb->get_var("SELECT COUNT(*) FROM $res_table");
-            $unique_users = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM $res_table");
+            $unique_users_answers = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM $ans_table");
+            $unique_users_results = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM $res_table");
             
             echo '<p><strong>Total Answers:</strong> ' . number_format($total_answers) . '</p>';
             echo '<p><strong>Total Results:</strong> ' . number_format($total_results) . '</p>';
-            echo '<p><strong>Unique Users:</strong> ' . number_format($unique_users) . '</p>';
+            echo '<p><strong>Users with Answers:</strong> ' . number_format($unique_users_answers) . '</p>';
+            echo '<p><strong>Users with Completed Results:</strong> ' . number_format($unique_users_results) . '</p>';
+            ?>
+        </div>
+
+        <!-- In-Progress Tests (Answers Not Yet Completed) -->
+        <div class="ptest-add-form">
+            <h3>In-Progress Tests (Users with Answers)</h3>
+            <p>These users have answered questions but may not have completed the test yet.</p>
+            
+            <?php
+            $in_progress = $wpdb->get_results("
+                SELECT a.user_id, u.user_login, u.display_name, a.week_num, 
+                       COUNT(*) as answer_count,
+                       MAX(a.created_at) as last_answer_time
+                FROM $ans_table a
+                LEFT JOIN {$wpdb->prefix}users u ON a.user_id = u.ID
+                GROUP BY a.user_id, a.week_num
+                ORDER BY last_answer_time DESC
+                LIMIT 10
+            ");
+
+            if ($in_progress) {
+                echo '<table class="ptest-questions-table">';
+                echo '<thead><tr><th>User</th><th>Week</th><th>Answers</th><th>Last Activity</th><th>Actions</th></tr></thead>';
+                echo '<tbody>';
+                foreach ($in_progress as $test) {
+                    echo '<tr>';
+                    echo '<td>' . esc_html($test->display_name ?: $test->user_login) . ' (ID: ' . $test->user_id . ')</td>';
+                    echo '<td>Week ' . $test->week_num . '</td>';
+                    echo '<td>' . $test->answer_count . ' answers</td>';
+                    echo '<td>' . date('M j, Y g:i a', strtotime($test->last_answer_time)) . '</td>';
+                    echo '<td>';
+                    echo '<button type="button" class="button button-small" onclick="document.getElementById(\'user_id_clear\').value=' . $test->user_id . '; document.getElementById(\'week_clear\').value=' . $test->week_num . '; document.querySelector(\'[data-tab=data]\').click(); document.getElementById(\'user_id_clear\').focus();">Clear This</button>';
+                    echo '</td>';
+                    echo '</tr>';
+                }
+                echo '</tbody></table>';
+            } else {
+                echo '<p style="color: #666; font-style: italic;">No in-progress tests.</p>';
+            }
             ?>
         </div>
 
@@ -416,7 +457,8 @@
 
         <!-- View Recent Test Results -->
         <div class="ptest-add-form">
-            <h3>Recent Test Completions</h3>
+            <h3>Recent Completed Tests (With Results)</h3>
+            <p>These users have fully completed the test and received their personality summary.</p>
             <?php
             $recent_results = $wpdb->get_results("
                 SELECT r.user_id, u.user_login, u.display_name, r.week_num, r.test_type, 
