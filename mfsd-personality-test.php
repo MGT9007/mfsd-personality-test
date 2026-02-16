@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 3.0.1
+ * Version: 3.1.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '3.0.1';
+    const VERSION = '3.1.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -531,6 +531,12 @@ final class MFSD_Personality_Test {
         $summary_prompt = $this->build_summary_prompt($mbti_type, $disc_scores, $week);
         $ai_summary = $this->call_ai($summary_prompt);
 
+        // If AI summary is empty or too short, create a rich fallback
+        if (!$ai_summary || strlen($ai_summary) < 200) {
+            error_log('MFSD Personality Test: AI summary too short or empty, using fallback');
+            $ai_summary = $this->generate_fallback_summary($mbti_type, $disc_scores, $week);
+        }
+
         // Save results if caching is enabled
         if ($cache_enabled) {
             if ($mbti_type) {
@@ -926,20 +932,45 @@ final class MFSD_Personality_Test {
         );
     }
 
+    private function generate_fallback_summary($mbti_type, $disc_scores, $week) {
+        $summary = "Welcome to your Week {$week} personality results! ";
+        
+        if ($mbti_type) {
+            $mbti_context = $this->get_mbti_type_context($mbti_type);
+            $summary .= "You're an {$mbti_type} - {$mbti_context['nickname']}. ";
+            $summary .= $mbti_context['description'] . " ";
+            $summary .= "Your strengths include: " . $mbti_context['strengths'] . " ";
+        }
+        
+        if ($disc_scores) {
+            $disc_context = $this->get_disc_style_context($disc_scores['primary']);
+            $primary = $disc_scores['primary'];
+            $summary .= "Your primary DISC style is {$primary} - {$disc_context['name']}. ";
+            $summary .= $disc_context['characteristics'] . " ";
+            $summary .= $disc_context['advice'];
+        }
+        
+        return $summary;
+    }
+
     private function call_ai($prompt) {
+        error_log('MFSD Personality Test: Calling AI with prompt length: ' . strlen($prompt));
+        
         if (!function_exists('mwai_core')) {
             error_log('MFSD Personality Test: MWAI plugin not available');
             return null;
         }
 
         try {
-            $ai = Meow_MWAI_Core::get_instance();
-            $query = new Meow_MWAI_Query_Text($prompt);
-            $query->set_max_tokens(500);
-            $reply = $ai->run($query);
-            return $reply->result;
+            $mwai = Meow_MWAI_Core::get_instance();
+            $result = $mwai->simpleTextQuery($prompt);
+            
+            error_log('MFSD Personality Test: AI response length: ' . strlen($result));
+            
+            return $result;
         } catch (Exception $e) {
             error_log('MFSD Personality Test AI Error: ' . $e->getMessage());
+            error_log('MFSD Personality Test AI Error Trace: ' . $e->getTraceAsString());
             return null;
         }
     }

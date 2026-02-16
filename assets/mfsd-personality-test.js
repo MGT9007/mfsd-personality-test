@@ -252,7 +252,18 @@
       const chatWrap = el("div","rag-chatwrap");
       const chatClone = chatSource.cloneNode(true);
       chatClone.style.display = "block";
-      chatClone.id = "";
+      chatClone.id = "mfsd-ptest-chat-" + idx; // Unique ID per question
+      
+      // Clear any existing conversation state from the cloned chatbot
+      const chatMessages = chatClone.querySelectorAll('.mwai-conversation, .mwai-chat');
+      chatMessages.forEach(function(msg) {
+        // Remove any existing messages to start fresh
+        const msgContainer = msg.querySelector('.mwai-messages');
+        if (msgContainer) {
+          msgContainer.innerHTML = '';
+        }
+      });
+      
       chatWrap.appendChild(chatClone);
       card.appendChild(chatWrap);
     }
