@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 4.0.1
+ * Version: 5.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '4.0.1';
+    const VERSION = '5.0.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -207,6 +207,24 @@ final class MFSD_Personality_Test {
                 error_log('MFSD Personality Test: Could not extract week from title, using default week 1');
             }
         }
+
+        // ── Ordering gate ──────────────────────────────────────────────────
+        if ( function_exists( 'mfsd_get_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
+            $student_id = get_current_user_id();
+            $task_slug  = 'personality_test_week_' . $week;
+            $status     = mfsd_get_task_status( $student_id, $task_slug );
+
+            if ( $status === 'locked' ) {
+                if ( function_exists( 'mfsd_ordering_locked_message' ) ) {
+                    return mfsd_ordering_locked_message( $task_slug );
+                }
+                return '<p style="text-align:center;padding:40px;color:#555;">This activity is not available yet. Please complete the previous activity first.</p>';
+            }
+            if ( $status === 'available' ) {
+                mfsd_set_task_status( $student_id, $task_slug, 'in_progress' );
+            }
+        }
+        // ── End ordering gate ──────────────────────────────────────────────
 
         wp_localize_script('mfsd-personality-test', 'MFSD_PTEST_CFG', array(
             'restUrlQuestions'    => esc_url_raw(rest_url('mfsd-ptest/v1/questions')),
@@ -577,6 +595,15 @@ final class MFSD_Personality_Test {
                 'disc_primary' => $disc_scores['primary'] ?? null,
                 'ai_summary' => $ai_summary,
             ));
+
+            // ── Ordering: mark completed ───────────────────────────────────
+            // Only when caching is on (summary saved to DB). Cache off = testing
+            // mode, keep in_progress so the gate doesn't advance.
+            if ( function_exists( 'mfsd_set_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
+                $task_slug = 'personality_test_week_' . $week;
+                mfsd_set_task_status( $user_id, $task_slug, 'completed' );
+            }
+            // ── End ordering notification ──────────────────────────────────
         }
 
         return array(
@@ -1046,6 +1073,7 @@ final class MFSD_Personality_Test {
         if (isset($_POST['mfsd_ptest_save_settings'])) {
             check_admin_referer('mfsd_ptest_settings');
             update_option('mfsd_ptest_cache_ai_summaries', isset($_POST['cache_ai_summaries']) ? '1' : '0');
+            update_option('mfsd_ptest_course_management', isset($_POST['course_management']) ? '1' : '0');
             echo '<div class="notice notice-success"><p>Settings saved successfully!</p></div>';
         }
 
@@ -1061,10 +1089,26 @@ final class MFSD_Personality_Test {
             if ($week > 0) {
                 $wpdb->delete($ans_table, array('user_id' => $user_id, 'week_num' => $week));
                 $wpdb->delete($res_table, array('user_id' => $user_id, 'week_num' => $week));
+                // Clear ordering progress for this specific week's task slug
+                if ( function_exists( 'mfsd_get_task_order_row' ) ) {
+                    $wpdb->delete(
+                        $wpdb->prefix . 'mfsd_task_progress',
+                        array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $week )
+                    );
+                }
                 echo '<div class="notice notice-success"><p>Cleared Week ' . $week . ' data for User ID ' . $user_id . '</p></div>';
             } else {
                 $wpdb->delete($ans_table, array('user_id' => $user_id));
                 $wpdb->delete($res_table, array('user_id' => $user_id));
+                // Clear ordering progress for all personality test weeks
+                if ( function_exists( 'mfsd_get_task_order_row' ) ) {
+                    for ( $w = 1; $w <= 6; $w++ ) {
+                        $wpdb->delete(
+                            $wpdb->prefix . 'mfsd_task_progress',
+                            array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $w )
+                        );
+                    }
+                }
                 echo '<div class="notice notice-success"><p>Cleared all test data for User ID ' . $user_id . '</p></div>';
             }
         }

@@ -6,6 +6,7 @@
     if (isset($_POST['mfsd_ptest_save_settings'])) {
         check_admin_referer('mfsd_ptest_settings');
         update_option('mfsd_ptest_cache_ai_summaries', isset($_POST['cache_ai_summaries']) ? '1' : '0');
+        update_option('mfsd_ptest_course_management', isset($_POST['course_management']) ? '1' : '0');
         echo '<div class="notice notice-success"><p>Settings saved successfully!</p></div>';
     }
 
@@ -50,6 +51,7 @@
 
     // Get current settings
     $cache_ai = get_option('mfsd_ptest_cache_ai_summaries', '1');
+    $course_management = get_option('mfsd_ptest_course_management', '1');
     ?>
     
     <style>
@@ -324,6 +326,27 @@
 
         <form method="post" action="">
             <?php wp_nonce_field('mfsd_ptest_settings'); ?>
+
+            <div class="ptest-add-form">
+                <h3>Course Management</h3>
+
+                <div class="ptest-form-row">
+                    <label>
+                        <input type="checkbox" name="course_management" <?php checked($course_management, '1'); ?>>
+                        <strong>Enable course ordering &amp; completion tracking</strong>
+                    </label>
+                    <p style="margin-left: 25px; color: #666; font-size: 14px;">
+                        <strong>When CHECKED:</strong> Task locking, in-progress and completion states are tracked
+                        via MFSD Course Manager. The task slug used is <code>personality_test_week_N</code>
+                        where N matches the week number extracted from the page title.<br>
+                        <strong>When UNCHECKED:</strong> Ordering logic is bypassed entirely — useful for testing
+                        and configuration without affecting student progress records.
+                        <?php if ( ! function_exists( 'mfsd_get_task_status' ) ): ?>
+                            <br><span style="color:#d63638;">⚠️ MFSD Ordering Utility plugin is not active.</span>
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
 
             <div class="ptest-add-form">
                 <h3>AI Summary Settings</h3>
