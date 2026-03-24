@@ -425,15 +425,18 @@
         const hs = el("div","ptest-result-header");
         hs.style.cssText = "margin:20px 0;padding:24px;border-radius:12px;text-align:center;background:linear-gradient(135deg," + p.familyColor + "22," + p.familyColor + "11);border:2px solid " + p.familyColor + ";";
 
-        // Avatar image
+        // Avatar image with circular white background
         const avatarFile = AVATAR_FILES[sd.mbti_type];
         if (cfg.avatarsBaseUrl && avatarFile) {
+          const avatarWrap = document.createElement("div");
+          avatarWrap.style.cssText = "width:160px;height:160px;margin:0 auto 16px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.12);overflow:hidden;";
           const avatarImg = document.createElement("img");
           avatarImg.src = cfg.avatarsBaseUrl + avatarFile;
           avatarImg.alt = "The " + p.name;
-          avatarImg.style.cssText = "width:160px;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.15));";
-          avatarImg.onerror = function() { this.style.display = 'none'; };
-          hs.appendChild(avatarImg);
+          avatarImg.style.cssText = "width:140px;height:140px;object-fit:contain;";
+          avatarImg.onerror = function() { avatarWrap.style.display = 'none'; };
+          avatarWrap.appendChild(avatarImg);
+          hs.appendChild(avatarWrap);
         }
 
         const fl = el("div",""); fl.style.cssText = "font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:" + p.familyColor + ";margin-bottom:8px;";
@@ -483,8 +486,9 @@
         }
       }
 
-      // DISC polar plot (if present)
-      if (sd.disc_scores) {
+      // DISC polar plot — only show if there are actual non-zero scores
+      const hasDiscScores = sd.disc_scores && (sd.disc_scores.D > 0 || sd.disc_scores.I > 0 || sd.disc_scores.S > 0 || sd.disc_scores.C > 0);
+      if (hasDiscScores) {
         const ds = el("div","ptest-disc-section"); ds.style.cssText = "margin:20px 0;padding:20px;background:#f8f9fa;border-radius:8px;";
         const dt = el("h3",""); dt.style.cssText = "margin:0 0 16px;color:#2c3e50;font-size:20px;text-align:center;";
         dt.textContent = "Your Communication Style"; ds.appendChild(dt);
