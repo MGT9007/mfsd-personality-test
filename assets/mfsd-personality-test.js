@@ -35,7 +35,7 @@
   const AVATAR_FILES = {
     'ISTJ':'Logistician.png', 'ISFJ':'Defender.png', 'ESTJ':'Executive.png', 'ESFJ':'Consul.png',
     'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'Debater.png',
-    'INFJ':'Advocate.png',    'INFP':'Mediatorv2.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
+    'INFJ':'Advocate.png',    'INFP':'Mediatorv3.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
     'ISTP':'Virtuoso.png',    'ISFP':'Adventurer.png', 'ESTP':'Entrepreneur.png','ESFP':'Entertainer.png'
   };
 
