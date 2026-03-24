@@ -425,11 +425,15 @@
         const hs = el("div","ptest-result-header");
         hs.style.cssText = "margin:20px 0;padding:24px;border-radius:12px;text-align:center;background:linear-gradient(135deg," + p.familyColor + "22," + p.familyColor + "11);border:2px solid " + p.familyColor + ";";
 
-        // Avatar image with circular white background
+        // 1. Family label
+        const fl = el("div",""); fl.style.cssText = "font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:" + p.familyColor + ";margin-bottom:12px;";
+        fl.textContent = "You are part of the " + p.family + " family"; hs.appendChild(fl);
+
+        // 2. Avatar image
         const avatarFile = AVATAR_FILES[sd.mbti_type];
         if (cfg.avatarsBaseUrl && avatarFile) {
           const avatarWrap = document.createElement("div");
-          avatarWrap.style.cssText = "width:160px;height:160px;margin:0 auto 16px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.12);overflow:hidden;";
+          avatarWrap.style.cssText = "width:160px;height:160px;margin:0 auto 16px;border-radius:50%;background:" + p.familyColor + ";display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.12);overflow:hidden;";
           const avatarImg = document.createElement("img");
           avatarImg.src = cfg.avatarsBaseUrl + avatarFile;
           avatarImg.alt = "The " + p.name;
@@ -439,12 +443,11 @@
           hs.appendChild(avatarWrap);
         }
 
-        const fl = el("div",""); fl.style.cssText = "font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:" + p.familyColor + ";margin-bottom:8px;";
-        fl.textContent = "You are part of the " + p.family + " family"; hs.appendChild(fl);
-
+        // 3. Personality name
         const nl = el("div",""); nl.style.cssText = "font-size:28px;font-weight:700;color:#2c3e50;margin-bottom:8px;";
         nl.textContent = "You are The " + p.name; hs.appendChild(nl);
 
+        // 4. Description + family description
         const dl = el("div",""); dl.style.cssText = "font-size:15px;color:#555;line-height:1.5;max-width:600px;margin:0 auto;";
         dl.textContent = desc; hs.appendChild(dl);
 
