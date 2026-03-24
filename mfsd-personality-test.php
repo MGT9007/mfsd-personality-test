@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: MFSD Personality Test
- * Description: Standalone personality test plugin with MBTI and DISC assessments, AI summaries, and week-based configuration.
- * Version: 5.0.0
+ * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with AI summaries, week-based configuration, and tabbed results.
+ * Version: 6.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '5.0.0';
+    const VERSION = '6.0.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -59,7 +59,7 @@ final class MFSD_Personality_Test {
           KEY idx_order (q_order)
         ) $charset;");
 
-        // Answers table - stores individual question responses
+        // Answers table
         dbDelta("CREATE TABLE $a (
           id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
           user_id BIGINT UNSIGNED NOT NULL,
@@ -79,7 +79,7 @@ final class MFSD_Personality_Test {
           KEY idx_user_question (user_id, question_id)
         ) $charset;");
 
-        // Results table - stores final personality assessments and AI summaries
+        // Results table
         dbDelta("CREATE TABLE $r (
           id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
           user_id BIGINT UNSIGNED NOT NULL,
@@ -101,7 +101,6 @@ final class MFSD_Personality_Test {
           KEY idx_user (user_id)
         ) $charset;");
 
-        // Insert sample questions
         $this->insert_sample_mbti_questions();
         $this->insert_sample_disc_questions();
     }
@@ -114,22 +113,15 @@ final class MFSD_Personality_Test {
         if ($count > 0) return;
 
         $mbti_questions = array(
-            // E/I axis
             array('order' => 1, 'text' => 'I enjoy being the center of attention at social gatherings.', 'axis' => '1', 'letter' => 'E'),
             array('order' => 2, 'text' => 'I prefer quiet evenings at home over busy social events.', 'axis' => '1', 'letter' => 'I'),
             array('order' => 3, 'text' => 'I feel energized after spending time with large groups.', 'axis' => '1', 'letter' => 'E'),
-            
-            // S/N axis
             array('order' => 4, 'text' => 'I focus on practical details rather than big-picture ideas.', 'axis' => '2', 'letter' => 'S'),
             array('order' => 5, 'text' => 'I often think about future possibilities and abstract concepts.', 'axis' => '2', 'letter' => 'N'),
             array('order' => 6, 'text' => 'I prefer concrete facts over theoretical discussions.', 'axis' => '2', 'letter' => 'S'),
-            
-            // T/F axis
             array('order' => 7, 'text' => 'I make decisions based on logic rather than feelings.', 'axis' => '3', 'letter' => 'T'),
             array('order' => 8, 'text' => 'I consider how decisions will affect people emotionally.', 'axis' => '3', 'letter' => 'F'),
             array('order' => 9, 'text' => 'I value objective analysis over personal values.', 'axis' => '3', 'letter' => 'T'),
-            
-            // J/P axis
             array('order' => 10, 'text' => 'I like to have a clear plan and stick to schedules.', 'axis' => '4', 'letter' => 'J'),
             array('order' => 11, 'text' => 'I prefer to keep my options open and be spontaneous.', 'axis' => '4', 'letter' => 'P'),
             array('order' => 12, 'text' => 'I feel uncomfortable when things are left unfinished.', 'axis' => '4', 'letter' => 'J'),
@@ -142,12 +134,7 @@ final class MFSD_Personality_Test {
                 'q_text' => $q['text'],
                 'mbti_axis' => $q['axis'],
                 'mbti_letter' => $q['letter'],
-                'w1' => 1,
-                'w2' => 1,
-                'w3' => 1,
-                'w4' => 1,
-                'w5' => 1,
-                'w6' => 1,
+                'w1' => 1, 'w2' => 1, 'w3' => 1, 'w4' => 1, 'w5' => 1, 'w6' => 1,
             ));
         }
     }
@@ -176,12 +163,7 @@ final class MFSD_Personality_Test {
                 'q_type' => 'DISC',
                 'q_text' => $q['text'],
                 'disc_mapping' => $q['mapping'],
-                'w1' => 1,
-                'w2' => 1,
-                'w3' => 1,
-                'w4' => 1,
-                'w5' => 1,
-                'w6' => 1,
+                'w1' => 1, 'w2' => 1, 'w3' => 1, 'w4' => 1, 'w5' => 1, 'w6' => 1,
             ));
         }
     }
@@ -208,7 +190,7 @@ final class MFSD_Personality_Test {
             }
         }
 
-        // ── Ordering gate ──────────────────────────────────────────────────
+        // ── Ordering gate ──
         if ( function_exists( 'mfsd_get_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
             $student_id = get_current_user_id();
             $task_slug  = 'personality_test_week_' . $week;
@@ -224,7 +206,10 @@ final class MFSD_Personality_Test {
                 mfsd_set_task_status( $student_id, $task_slug, 'in_progress' );
             }
         }
-        // ── End ordering gate ──────────────────────────────────────────────
+
+        // ── Avatar image URL ──
+        // Place the avatar image as: wp-content/plugins/mfsd-personality-test/assets/personality-avatars.jpg
+        $avatar_url = plugin_dir_url(__FILE__) . 'assets/personality-avatars.jpg';
 
         wp_localize_script('mfsd-personality-test', 'MFSD_PTEST_CFG', array(
             'restUrlQuestions'    => esc_url_raw(rest_url('mfsd-ptest/v1/questions')),
@@ -236,6 +221,7 @@ final class MFSD_Personality_Test {
             'restUrlQuestionChat' => esc_url_raw(rest_url('mfsd-ptest/v1/question-chat')),
             'nonce'               => wp_create_nonce('wp_rest'),
             'week'                => $week,
+            'avatarImageUrl'      => $avatar_url,
         ));
 
         wp_enqueue_script('mfsd-personality-test');
@@ -253,37 +239,31 @@ final class MFSD_Personality_Test {
             'callback'            => array($this, 'api_questions'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/answer', array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($this, 'api_answer'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/summary', array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($this, 'api_summary'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/status', array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($this, 'api_status'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/intro', array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($this, 'api_intro'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/question-guidance', array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($this, 'api_question_guidance'),
             'permission_callback' => array($this, 'check_permission'),
         ));
-
         register_rest_route('mfsd-ptest/v1', '/question-chat', array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($this, 'api_question_chat'),
@@ -386,11 +366,7 @@ final class MFSD_Personality_Test {
         ));
 
         if ($completed > 0) {
-            return array(
-                'ok' => true,
-                'status' => 'completed',
-                'week' => $week
-            );
+            return array('ok' => true, 'status' => 'completed', 'week' => $week);
         }
 
         $col = 'w' . $week;
@@ -405,9 +381,7 @@ final class MFSD_Personality_Test {
 
         if (count($answered) === 0) {
             return array(
-                'ok' => true,
-                'status' => 'not_started',
-                'week' => $week,
+                'ok' => true, 'status' => 'not_started', 'week' => $week,
                 'total_questions' => $total_questions
             );
         }
@@ -420,9 +394,7 @@ final class MFSD_Personality_Test {
         ));
 
         return array(
-            'ok' => true,
-            'status' => 'in_progress',
-            'week' => $week,
+            'ok' => true, 'status' => 'in_progress', 'week' => $week,
             'total_questions' => $total_questions,
             'answered_count' => count($answered),
             'answered_question_ids' => $answered_ids,
@@ -430,6 +402,9 @@ final class MFSD_Personality_Test {
         );
     }
 
+    /* ================================================================
+       INTRO — "Who Am I" branding, reference student age, no MBTI/DISC
+       ================================================================ */
     public function api_intro($req) {
         $week = (int) $req->get_param('week') ?: 1;
 
@@ -437,61 +412,79 @@ final class MFSD_Personality_Test {
         $q_table = $wpdb->prefix . self::TBL_QUESTIONS;
         $col = 'w' . $week;
 
-        $mbti_count = $wpdb->get_var("SELECT COUNT(*) FROM $q_table WHERE q_type = 'MBTI' AND $col = 1");
-        $disc_count = $wpdb->get_var("SELECT COUNT(*) FROM $q_table WHERE q_type = 'DISC' AND $col = 1");
-        $total = $mbti_count + $disc_count;
+        $total = $wpdb->get_var("SELECT COUNT(*) FROM $q_table WHERE $col = 1");
 
-        $test_types = array();
-        if ($mbti_count > 0) $test_types[] = 'Myers-Briggs (MBTI)';
-        if ($disc_count > 0) $test_types[] = 'DISC';
-        $test_type_str = implode(' and ', $test_types);
-
-        $prompt = "You are Steve Sallis, a friendly motivational teacher-coach for students aged 12-14 working on their High Performance Pathway. Generate a brief, encouraging introduction (2-3 sentences) for a personality test. The test includes {$test_type_str} with {$total} total questions. Keep it light, fun, and reassuring that there are no wrong answers. Make it engaging for young teens. Start your message with 'Steve says:' and keep the tone warm and encouraging.";
+        $prompt = "You are Steve Sallis, a friendly motivational teacher-coach for students aged 12-14 working on their My Future Self Foundation Course. ";
+        $prompt .= "Generate a brief, encouraging introduction (2-3 sentences) for a personality quiz called 'Who Am I'. ";
+        $prompt .= "The quiz has {$total} questions that will help the student discover which of 16 personality types they are. ";
+        $prompt .= "Remember you are talking to a young person aged 12-14. ";
+        $prompt .= "Keep it light, fun, and reassuring that there are no wrong answers — every answer is THEIR answer. ";
+        $prompt .= "Do NOT mention 'MBTI', 'Myers-Briggs', or 'DISC' — just call it a personality quiz or 'Who Am I'. ";
+        $prompt .= "Start your message with 'Steve says:' and keep the tone warm, encouraging, and age-appropriate.";
 
         $intro_message = $this->call_ai($prompt);
 
         if (!$intro_message) {
-            $intro_message = "Steve says: Welcome to your Week {$week} Personality Test! You'll answer {$total} questions about {$test_type_str}. This is just for fun to help you understand yourself better - there are no wrong answers!";
+            $intro_message = "Steve says: Hey there, superstar! You're about to take a fun quiz that helps you discover what makes YOU uniquely awesome — think of it like unlocking your own personal cheat code! There are no wrong answers here, so just relax, be yourself, and answer honestly — every answer is the right answer because it's YOUR answer. Let's do this! 👍😊";
         }
 
         return array(
             'ok' => true,
             'intro_message' => $intro_message,
-            'test_types' => $test_type_str,
             'total_questions' => $total,
-            'mbti_count' => $mbti_count,
-            'disc_count' => $disc_count
         );
     }
 
+    /* ================================================================
+       QUESTION GUIDANCE — no "great question" phrasing
+       ================================================================ */
     public function api_question_guidance($req) {
         $question_text = $req->get_param('question_text');
         $q_type = $req->get_param('q_type');
 
-        $prompt = "You are Steve Sallis, a motivational teacher-coach helping a 12-14 year old student understand a personality test question. The question is: '{$question_text}'. Provide a brief (2-3 sentences) explanation to help them understand what the question is asking. Start with 'Steve says:' and keep it simple, relatable, and age-appropriate. Use your encouraging, positive coaching style.";
+        $prompt = "You are Steve Sallis, a motivational teacher-coach helping a 12-14 year old student understand a personality quiz question. ";
+        $prompt .= "The question is: '{$question_text}'. ";
+        $prompt .= "Provide a brief (2-3 sentences) explanation to help them understand what the question is really asking about. ";
+        $prompt .= "Start with 'Steve says:' — do NOT start with phrases like 'Great question' or 'Hey, great question' because the student didn't ask a question, YOU are explaining it to them. ";
+        $prompt .= "Instead, start by naturally explaining what the question means in simple, relatable terms. ";
+        $prompt .= "Use examples from their everyday life (school, friends, hobbies) to make it click. ";
+        $prompt .= "Keep it encouraging, simple, and age-appropriate for a 12-14 year old. ";
+        $prompt .= "Remind them there's no right or wrong answer.";
 
         $guidance = $this->call_ai($prompt);
 
         return array(
             'ok' => true,
-            'guidance' => $guidance ?: 'Steve says: Think about how you naturally behave in everyday situations.'
+            'guidance' => $guidance ?: 'Steve says: Think about how you naturally behave in everyday situations — there\'s no right or wrong answer here, just go with what feels most like you! 😊'
         );
     }
 
+    /* ================================================================
+       QUESTION CHAT — SteveGPT branding, not generic AI
+       ================================================================ */
     public function api_question_chat($req) {
         $user_message = $req->get_param('message');
         $question_text = $req->get_param('question_text');
 
-        $prompt = "You are SteveGPT, the AI version of Steve Sallis - a motivational teacher-coach for 12-14 year olds working on their High Performance Pathway. A student is working on this personality test question: '{$question_text}'. They asked: '{$user_message}'. Provide a brief, helpful answer that helps them understand the question better. Keep it friendly, encouraging, and age-appropriate. Sign your response with '- SteveGPT' at the end.";
+        $prompt = "You are SteveGPT, the AI version of Steve Sallis — a motivational teacher-coach for 12-14 year olds on their My Future Self Foundation Course. ";
+        $prompt .= "A student is working on this personality quiz question: '{$question_text}'. ";
+        $prompt .= "They asked: '{$user_message}'. ";
+        $prompt .= "Provide a brief, helpful answer that helps them understand the question better. ";
+        $prompt .= "Keep it friendly, encouraging, and age-appropriate. ";
+        $prompt .= "Do NOT reference 'MBTI', 'Myers-Briggs', or 'DISC' — just help them think about the question naturally. ";
+        $prompt .= "Sign your response with '- SteveGPT' at the end.";
 
         $response = $this->call_ai($prompt);
 
         return array(
             'ok' => true,
-            'response' => $response ?: 'I understand you need help. Try thinking about how you usually act in similar situations. - SteveGPT'
+            'response' => $response ?: 'I understand you need help. Try thinking about how you usually act in similar situations — there\'s no wrong answer, just go with your gut! - SteveGPT'
         );
     }
 
+    /* ================================================================
+       SUMMARY — with section markers for tabbed display
+       ================================================================ */
     public function api_summary($req) {
         $user_id = get_current_user_id();
         $week = (int) $req->get_param('week');
@@ -501,10 +494,8 @@ final class MFSD_Personality_Test {
         $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
         $res_table = $wpdb->prefix . self::TBL_RESULTS;
 
-        // Check if caching is enabled
         $cache_enabled = get_option('mfsd_ptest_cache_ai_summaries', '1') === '1';
 
-        // If caching is enabled and not forcing regeneration, check for existing results
         if ($cache_enabled && !$force_regenerate) {
             $existing = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED'",
@@ -512,7 +503,6 @@ final class MFSD_Personality_Test {
             ), ARRAY_A);
 
             if ($existing && !empty($existing['ai_summary'])) {
-                // Return cached results
                 return array(
                     'ok' => true,
                     'mbti_type' => $existing['mbti_type'],
@@ -529,39 +519,36 @@ final class MFSD_Personality_Test {
             }
         }
 
-        // Generate new results (either cache disabled or no cached results exist)
+        // Calculate MBTI
         $mbti_answers = $wpdb->get_results($wpdb->prepare(
             "SELECT mbti_axis, mbti_letter, answer FROM $ans_table 
              WHERE user_id = %d AND week_num = %d AND q_type = 'MBTI'",
             $user_id, $week
         ), ARRAY_A);
-
         $mbti_type = $this->calculate_mbti($mbti_answers);
 
+        // Calculate DISC
         $disc_answers = $wpdb->get_results($wpdb->prepare(
             "SELECT d_contribution, i_contribution, s_contribution, c_contribution FROM $ans_table 
              WHERE user_id = %d AND week_num = %d AND q_type = 'DISC'",
             $user_id, $week
         ), ARRAY_A);
-
         $disc_scores = $this->calculate_disc($disc_answers);
 
+        // Build and call AI
         $summary_prompt = $this->build_summary_prompt($mbti_type, $disc_scores, $week);
         $ai_summary = $this->call_ai($summary_prompt);
 
-        // If AI summary is empty or too short, create a rich fallback
         if (!$ai_summary || strlen($ai_summary) < 200) {
             error_log('MFSD Personality Test: AI summary too short or empty, using fallback');
             $ai_summary = $this->generate_fallback_summary($mbti_type, $disc_scores, $week);
         }
 
-        // Save results if caching is enabled
+        // Cache results
         if ($cache_enabled) {
             if ($mbti_type) {
                 $wpdb->replace($res_table, array(
-                    'user_id' => $user_id,
-                    'week_num' => $week,
-                    'test_type' => 'MBTI',
+                    'user_id' => $user_id, 'week_num' => $week, 'test_type' => 'MBTI',
                     'mbti_type' => $mbti_type,
                     'mbti_details' => json_encode(array('raw_answers' => $mbti_answers)),
                     'ai_summary' => $ai_summary,
@@ -570,13 +557,9 @@ final class MFSD_Personality_Test {
 
             if ($disc_scores) {
                 $wpdb->replace($res_table, array(
-                    'user_id' => $user_id,
-                    'week_num' => $week,
-                    'test_type' => 'DISC',
-                    'disc_d_score' => $disc_scores['D'],
-                    'disc_i_score' => $disc_scores['I'],
-                    'disc_s_score' => $disc_scores['S'],
-                    'disc_c_score' => $disc_scores['C'],
+                    'user_id' => $user_id, 'week_num' => $week, 'test_type' => 'DISC',
+                    'disc_d_score' => $disc_scores['D'], 'disc_i_score' => $disc_scores['I'],
+                    'disc_s_score' => $disc_scores['S'], 'disc_c_score' => $disc_scores['C'],
                     'disc_primary' => $disc_scores['primary'],
                     'disc_details' => json_encode($disc_scores),
                     'ai_summary' => $ai_summary,
@@ -584,9 +567,7 @@ final class MFSD_Personality_Test {
             }
 
             $wpdb->replace($res_table, array(
-                'user_id' => $user_id,
-                'week_num' => $week,
-                'test_type' => 'COMBINED',
+                'user_id' => $user_id, 'week_num' => $week, 'test_type' => 'COMBINED',
                 'mbti_type' => $mbti_type,
                 'disc_d_score' => $disc_scores['D'] ?? null,
                 'disc_i_score' => $disc_scores['I'] ?? null,
@@ -596,14 +577,11 @@ final class MFSD_Personality_Test {
                 'ai_summary' => $ai_summary,
             ));
 
-            // ── Ordering: mark completed ───────────────────────────────────
-            // Only when caching is on (summary saved to DB). Cache off = testing
-            // mode, keep in_progress so the gate doesn't advance.
+            // Ordering: mark completed
             if ( function_exists( 'mfsd_set_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
                 $task_slug = 'personality_test_week_' . $week;
                 mfsd_set_task_status( $user_id, $task_slug, 'completed' );
             }
-            // ── End ordering notification ──────────────────────────────────
         }
 
         return array(
@@ -617,77 +595,54 @@ final class MFSD_Personality_Test {
 
     private function calculate_mbti($answers) {
         if (empty($answers)) return null;
-
         $scores = array('1' => array(), '2' => array(), '3' => array(), '4' => array());
-
         foreach ($answers as $a) {
-            $axis = $a['mbti_axis'];
-            $letter = $a['mbti_letter'];
-            $answer = $a['answer'];
-
-            if (!isset($scores[$axis][$letter])) {
-                $scores[$axis][$letter] = 0;
-            }
-
-            if ($answer === 'G') {
-                $scores[$axis][$letter] += 2;
-            } elseif ($answer === 'A') {
-                $scores[$axis][$letter] += 1;
-            }
+            $axis = $a['mbti_axis']; $letter = $a['mbti_letter']; $answer = $a['answer'];
+            if (!isset($scores[$axis][$letter])) $scores[$axis][$letter] = 0;
+            if ($answer === 'G') $scores[$axis][$letter] += 2;
+            elseif ($answer === 'A') $scores[$axis][$letter] += 1;
         }
-
         $type = '';
-        $axis_map = array('1' => array('E', 'I'), '2' => array('S', 'N'), '3' => array('T', 'F'), '4' => array('J', 'P'));
-
+        $axis_map = array('1' => array('E','I'), '2' => array('S','N'), '3' => array('T','F'), '4' => array('J','P'));
         foreach ($axis_map as $axis => $letters) {
-            $score_a = $scores[$axis][$letters[0]] ?? 0;
-            $score_b = $scores[$axis][$letters[1]] ?? 0;
-            $type .= $score_a >= $score_b ? $letters[0] : $letters[1];
+            $a = $scores[$axis][$letters[0]] ?? 0;
+            $b = $scores[$axis][$letters[1]] ?? 0;
+            $type .= $a >= $b ? $letters[0] : $letters[1];
         }
-
         return $type;
     }
 
     private function calculate_disc($answers) {
         if (empty($answers)) return null;
-
         $totals = array('D' => 0, 'I' => 0, 'S' => 0, 'C' => 0);
-
         foreach ($answers as $a) {
             $totals['D'] += (float)$a['d_contribution'];
             $totals['I'] += (float)$a['i_contribution'];
             $totals['S'] += (float)$a['s_contribution'];
             $totals['C'] += (float)$a['c_contribution'];
         }
-
         $sum = array_sum($totals);
         if ($sum > 0) {
-            foreach ($totals as $k => $v) {
-                $totals[$k] = round(($v / $sum) * 100, 1);
-            }
+            foreach ($totals as $k => $v) $totals[$k] = round(($v / $sum) * 100, 1);
         }
-
         $primary = array_keys($totals, max($totals))[0];
-
-        return array(
-            'D' => $totals['D'],
-            'I' => $totals['I'],
-            'S' => $totals['S'],
-            'C' => $totals['C'],
-            'primary' => $primary,
-            'percentages' => $totals
-        );
+        return array('D' => $totals['D'], 'I' => $totals['I'], 'S' => $totals['S'], 'C' => $totals['C'],
+                      'primary' => $primary, 'percentages' => $totals);
     }
 
+    /* ================================================================
+       SUMMARY PROMPT — with [SECTION:...] markers for tabbed display
+       No MBTI codes in student-facing text
+       ================================================================ */
     private function build_summary_prompt($mbti_type, $disc_scores, $week) {
-        $prompt = "You are Steve Sallis, a motivational teacher-coach providing personality test results to a 12-14 year old student on their High Performance Pathway. ";
-        $prompt .= "This is their Week {$week} personality assessment results.\n\n";
+        $prompt = "You are Steve Sallis, a motivational teacher-coach providing 'Who Am I' personality quiz results to a 12-14 year old student on their My Future Self Foundation Course. ";
+        $prompt .= "This is their Week {$week} 'Who Am I (Part 1)' results.\n\n";
 
         if ($mbti_type) {
             $mbti_context = $this->get_mbti_type_context($mbti_type);
-            $prompt .= "=== MBTI ASSESSMENT ===\n";
-            $prompt .= "Type: {$mbti_type} - {$mbti_context['nickname']}\n";
-            $prompt .= "Group: {$mbti_context['group']}\n\n";
+            $prompt .= "=== PERSONALITY ASSESSMENT (internal reference only — do NOT show the code '{$mbti_type}' to the student) ===\n";
+            $prompt .= "Personality Name: The {$mbti_context['nickname']}\n";
+            $prompt .= "Personality Family: {$mbti_context['group']}\n\n";
             $prompt .= "Core Description: {$mbti_context['description']}\n\n";
             $prompt .= "Key Strengths: {$mbti_context['strengths']}\n\n";
             $prompt .= "Learning Style: {$mbti_context['learning_style']}\n\n";
@@ -699,11 +654,11 @@ final class MFSD_Personality_Test {
         if ($disc_scores) {
             $disc_context = $this->get_disc_style_context($disc_scores['primary']);
             $primary = $disc_scores['primary'];
-            $prompt .= "=== DISC PROFILE ===\n";
+            $prompt .= "=== COMMUNICATION STYLE ===\n";
             $prompt .= "Primary Style: {$primary} - {$disc_context['name']}\n";
             $prompt .= "Scores: D={$disc_scores['D']}%, I={$disc_scores['I']}%, S={$disc_scores['S']}%, C={$disc_scores['C']}%\n\n";
             $prompt .= "Characteristics: {$disc_context['characteristics']}\n\n";
-            $prompt .= "What Motivates Them: {$disc_context['motivations']}\n\n";
+            $prompt .= "Motivations: {$disc_context['motivations']}\n\n";
             $prompt .= "Growth Areas: {$disc_context['challenges']}\n\n";
             $prompt .= "Learning Preferences: {$disc_context['learning']}\n\n";
             $prompt .= "Teen Strengths: {$disc_context['strengths_for_teens']}\n\n";
@@ -711,26 +666,37 @@ final class MFSD_Personality_Test {
         }
 
         $prompt .= "=== YOUR TASK ===\n";
-        $prompt .= "Based on this comprehensive personality profile, write a warm, personal, and encouraging summary as Steve Sallis that:\n\n";
-        $prompt .= "1. STARTS with 'Steve says:' at the very beginning\n";
-        $prompt .= "2. Opens with a warm greeting that acknowledges their unique personality type (4-5 paragraphs total)\n";
-        $prompt .= "3. Explains what their results mean in simple, relatable terms they can understand\n";
-        $prompt .= "4. Highlights their natural strengths and talents with specific examples\n";
-        $prompt .= "5. Gives practical, actionable advice for school success based on their learning style\n";
-        $prompt .= "6. Explains how they naturally interact with friends and how to build great friendships\n";
-        $prompt .= "7. Suggests specific activities, subjects, or roles where they might excel\n";
-        $prompt .= "8. Acknowledges any growth areas gently and positively, framing them as opportunities\n";
-        $prompt .= "9. Ends with an encouraging message that all personality types are valuable and needed\n";
-        $prompt .= "10. ENDS with '- Steve' as the signature on a new line\n\n";
+        $prompt .= "Write a warm, personal, encouraging summary as Steve Sallis.\n\n";
+        $prompt .= "CRITICAL FORMATTING RULES:\n";
+        $prompt .= "- You MUST structure your response using these exact section markers. Each section starts with a marker on its own line:\n\n";
+        $prompt .= "[SECTION:Who You Are]\n";
+        $prompt .= "- Warm greeting, introduce their personality name (e.g. 'The Executive') and family (e.g. 'Sentinels')\n";
+        $prompt .= "- Explain what this means in simple, relatable terms\n";
+        $prompt .= "- Do NOT use the four-letter code (e.g. ESTJ) — ONLY use the personality name and family name\n\n";
+        $prompt .= "[SECTION:Your Strengths]\n";
+        $prompt .= "- Highlight their natural strengths and talents with specific examples from teen life\n\n";
+        $prompt .= "[SECTION:Learning & School]\n";
+        $prompt .= "- Give practical, actionable advice for school success based on their learning style\n";
+        $prompt .= "- Suggest subjects or activities where they might excel\n\n";
+        $prompt .= "[SECTION:Friends & Relationships]\n";
+        $prompt .= "- Explain how they naturally interact with friends\n";
+        $prompt .= "- Tips for building great friendships\n\n";
+        $prompt .= "[SECTION:Your Growth Edge]\n";
+        $prompt .= "- Acknowledge growth areas gently and positively, framing them as opportunities\n";
+        $prompt .= "- End with an encouraging message that all personality types are valuable\n";
+        $prompt .= "- Sign off with '- Steve'\n\n";
+
         $prompt .= "IMPORTANT GUIDELINES:\n";
-        $prompt .= "- Write in second person (\"You are...\" \"Your strength is...\")\n";
+        $prompt .= "- Start the FIRST section with 'Steve says:'\n";
+        $prompt .= "- Write in second person ('You are...', 'Your strength is...')\n";
+        $prompt .= "- NEVER use four-letter personality codes like ESTJ, INFP etc. — ONLY use the name (e.g. 'The Executive') and family (e.g. 'Sentinels')\n";
+        $prompt .= "- NEVER use the terms 'MBTI', 'Myers-Briggs', or 'DISC' — the student doesn't need to know the framework names\n";
         $prompt .= "- Use Steve Sallis's warm, encouraging, motivational coaching style\n";
         $prompt .= "- Be specific and personal, not generic\n";
         $prompt .= "- Use relatable examples from teen life (school, friends, hobbies, sports)\n";
         $prompt .= "- Keep language simple and age-appropriate for 12-14 year olds\n";
-        $prompt .= "- Be positive but authentic - don't oversell or sound fake\n";
+        $prompt .= "- Be positive but authentic — don't oversell\n";
         $prompt .= "- Make them feel understood, valued, and excited about who they are\n";
-        $prompt .= "- Remember: START with 'Steve says:' and END with '- Steve'\n";
 
         return $prompt;
     }
@@ -784,12 +750,12 @@ final class MFSD_Personality_Test {
                 'strengths' => 'Excellent with tools, machines, and hands-on projects, calm and collected under pressure, practical problem-solvers who fix things, adaptable and flexible, great at sports requiring precision, logical troubleshooters',
                 'learning_style' => 'Learn by doing and taking things apart to see how they work. Need hands-on experience, practical applications, and freedom to experiment. Get bored sitting still listening to lectures - need physical activity and real-world practice.',
                 'communication' => 'Brief, practical, and to-the-point. Focus on facts and solutions rather than emotions. May seem quiet but are sharp observers. Express themselves better through actions than words. Not into drama or emotional discussions.',
-                'careers' => 'Mechanics, engineering, carpentry, athletics, emergency services (paramedic, firefighter), forensics, surgery, aviation, construction, video game design, extreme sports',
+                'careers' => 'Mechanics, engineering, carpentry, athletics, emergency services, forensics, surgery, aviation, construction, video game design, extreme sports',
                 'teen_advice' => 'Your hands-on skills are impressive - embrace projects where you build or fix things. Your calm attitude in emergencies is a real gift. Don\'t be afraid to show your adventurous side. Channel your energy into active hobbies and sports!'
             ),
             'ISFP' => array(
                 'group' => 'Explorer',
-                'nickname' => 'The Artist',
+                'nickname' => 'The Adventurer',
                 'description' => 'Gentle, flexible souls with artistic flair who live in the moment and find beauty everywhere. ISFPs are the creative free spirits who express themselves through art, music, or nature.',
                 'strengths' => 'Naturally artistic and creative, sensitive to beauty and aesthetics, kind and considerate to everyone, live fully in the present moment, excellent at hands-on creative work, harmonious and easy-going personality',
                 'learning_style' => 'Learn best through artistic expression, hands-on activities, and sensory experiences. Prefer visual learning, creative projects, and freedom to explore at own pace. Struggle with rigid structure but thrive with flexibility.',
@@ -824,7 +790,7 @@ final class MFSD_Personality_Test {
                 'strengths' => 'Quick thinking and fast reactions, incredibly energetic and fun-loving, great at negotiations and persuasion, practical hands-on learners, adaptable to change, excellent in crisis situations, natural athletes',
                 'learning_style' => 'Learn by doing, taking action, and jumping right in. Need activity, variety, and real-world applications. Get restless sitting still listening to theory. Excel at learning through sports, projects, and hands-on experiments.',
                 'communication' => 'Direct, energetic, and entertaining. Love lively conversations and telling exciting stories. Great at reading people and situations. May interrupt or dominate conversations. Natural salespeople and negotiators.',
-                'careers' => 'Sales, entrepreneurship, emergency services, professional sports, entertainment, marketing, real estate, bartending, coaching, event planning, stock trading',
+                'careers' => 'Sales, entrepreneurship, emergency services, professional sports, entertainment, marketing, real estate, coaching, event planning, stock trading',
                 'teen_advice' => 'Your energy and boldness are magnetic - people love being around you! Channel your risk-taking into sports, business, or adventures. Learn to think before acting sometimes. Your ability to adapt quickly is a major advantage in life!'
             ),
             'ESFP' => array(
@@ -834,7 +800,7 @@ final class MFSD_Personality_Test {
                 'strengths' => 'Incredibly friendly and outgoing, live fully in the present moment, encouraging and uplifting to others, practical and resourceful, excellent at bringing people together, natural performers who entertain easily',
                 'learning_style' => 'Learn best through group activities, hands-on experiences, and social interaction. Need movement, variety, and fun. Excel in performing arts, group projects, and anything involving people. Struggle with abstract theory.',
                 'communication' => 'Warm, enthusiastic, and very expressive. Love entertaining and making people laugh. Great at reading the room and keeping energy high. May struggle with serious or deep conversations. Prefer showing rather than telling.',
-                'careers' => 'Entertainment, hospitality, teaching (especially young children), counseling, sales, event planning, childcare, fitness training, social media, restaurant service, tour guide',
+                'careers' => 'Entertainment, hospitality, teaching, counseling, sales, event planning, childcare, fitness training, social media, restaurant service, tour guide',
                 'teen_advice' => 'Your positive energy is contagious - you light up every room! Your talent for connecting with people is powerful. Remember that sometimes less is more with attention-seeking. Use your performance skills in drama, sports, or leadership. Stay true to your fun-loving self!'
             ),
             'ENFP' => array(
@@ -854,7 +820,7 @@ final class MFSD_Personality_Test {
                 'strengths' => 'Exceptionally quick-witted and clever, innovative idea-generators, great at brainstorming and thinking outside the box, enjoy intellectual challenges and debates, adaptable and resourceful, excellent at seeing different perspectives',
                 'learning_style' => 'Learn through debate, exploring multiple perspectives, and challenging assumptions. Need intellectual stimulation and variety. Excel at arguing different viewpoints and finding logical flaws. Get bored with repetitive tasks.',
                 'communication' => 'Lively debater who loves playing devil\'s advocate. Very quick-thinking and witty. Enjoy intellectual sparring and challenging others\' logic. May argue just for fun without realizing it bothers others. Natural storytellers.',
-                'careers' => 'Law, engineering, entrepreneurship, consulting, invention, journalism, programming, marketing, business strategy, psychology, teaching (college level)',
+                'careers' => 'Law, engineering, entrepreneurship, consulting, invention, journalism, programming, marketing, business strategy, psychology, teaching',
                 'teen_advice' => 'Your quick mind and clever ideas are impressive - use them for good! Remember that not everything needs to be debated - sometimes just agree. Your ability to see all sides of an issue is valuable. Channel your energy into entrepreneurship or invention!'
             ),
             'ESTJ' => array(
@@ -874,7 +840,7 @@ final class MFSD_Personality_Test {
                 'strengths' => 'Incredibly warm and supportive, excellent at organizing people and events, loyal friends who remember everything, practical helpers who notice what needs doing, great at creating harmony in groups, naturally caring',
                 'learning_style' => 'Learn best in supportive group settings with encouragement. Prefer hands-on learning, working with others, and helping classmates succeed. Remember information better when learning has social element. Like clear structure and positive feedback.',
                 'communication' => 'Warm, friendly, and attentive. Love connecting with people and staying in touch. Very good at reading others\' emotions and responding supportively. May take criticism personally. Prefer cooperation over conflict.',
-                'careers' => 'Teaching (especially elementary), nursing, social work, event planning, hospitality, office management, counseling, human resources, restaurant management, customer service',
+                'careers' => 'Teaching, nursing, social work, event planning, hospitality, office management, counseling, human resources, restaurant management, customer service',
                 'teen_advice' => 'Your caring nature makes everyone feel valued - that\'s a superpower! Your ability to bring people together is special. Remember to take care of yourself too, not just others. Use your organizing skills to plan events and lead teams. People need friends like you!'
             ),
             'ENFJ' => array(
@@ -900,8 +866,7 @@ final class MFSD_Personality_Test {
         );
 
         return isset($mbti_data[$type]) ? $mbti_data[$type] : array(
-            'group' => 'Unique',
-            'nickname' => 'The Individual',
+            'group' => 'Unique', 'nickname' => 'The Individual',
             'description' => 'A unique personality type with individual characteristics',
             'strengths' => 'Personal strengths and talents',
             'learning_style' => 'Individual learning preferences',
@@ -915,72 +880,84 @@ final class MFSD_Personality_Test {
         $disc_data = array(
             'D' => array(
                 'name' => 'Dominance',
-                'characteristics' => 'Direct, results-oriented, decisive, competitive, and confident. Natural leaders who take charge, love challenges, and focus on winning and achieving goals. Move fast, make quick decisions, and push to get things done.',
-                'motivations' => 'Motivated by winning, achieving goals, being in control, and overcoming challenges. Love seeing immediate results and being recognized for accomplishments. Thrive on competition and new challenges. Want to make things happen and see progress.',
-                'challenges' => 'May seem too direct, blunt, or impatient to others. Can appear bossy or pushy without meaning to. Might prioritize tasks over people\'s feelings. Sometimes move too fast without thinking things through. Can benefit from slowing down, listening more, and considering how decisions affect others emotionally.',
-                'learning' => 'Learn best through challenge, competition, and seeing quick results. Prefer independent work where they can set the pace. Like hands-on projects where they can lead and make decisions. Get bored with slow-paced instruction or too much detail. Want to know the bottom line and get to action.',
-                'strengths_for_teens' => 'Excellent at sports (especially competitive ones), taking leadership roles in clubs or teams, making quick decisions when needed, standing up for what they believe in, organizing groups to accomplish goals, staying confident under pressure, and getting things done efficiently.',
-                'advice' => 'Your drive and confidence are impressive - channel that competitive energy into positive goals! Remember that teamwork means letting others contribute too, not just leading. Your ability to take charge is valuable, but try listening to others\' ideas before deciding. Slow down sometimes and consider feelings, not just results. You\'re a natural leader!'
+                'characteristics' => 'Direct, results-oriented, decisive, competitive, and confident. Natural leaders who take charge, love challenges, and focus on winning and achieving goals.',
+                'motivations' => 'Motivated by winning, achieving goals, being in control, and overcoming challenges. Love seeing immediate results and being recognized for accomplishments.',
+                'challenges' => 'May seem too direct, blunt, or impatient to others. Can appear bossy or pushy without meaning to. Might prioritize tasks over people\'s feelings. Can benefit from slowing down, listening more, and considering how decisions affect others.',
+                'learning' => 'Learn best through challenge, competition, and seeing quick results. Prefer independent work where they can set the pace. Like hands-on projects where they can lead and make decisions.',
+                'strengths_for_teens' => 'Excellent at sports, taking leadership roles, making quick decisions, standing up for what they believe in, organizing groups, staying confident under pressure, and getting things done efficiently.',
+                'advice' => 'Your drive and confidence are impressive - channel that competitive energy into positive goals! Remember that teamwork means letting others contribute too. Your ability to take charge is valuable, but try listening to others\' ideas before deciding.'
             ),
             'I' => array(
                 'name' => 'Influence',
-                'characteristics' => 'Enthusiastic, optimistic, outgoing, persuasive, and naturally social. Love being around people, making friends easily, and bringing energy to every situation. Expressive communicators who inspire and motivate others. Focus on fun and positive connections.',
-                'motivations' => 'Motivated by social recognition, being liked and popular, having fun, connecting with lots of people, and expressing creativity. Love being the center of attention and making others happy. Thrive in social settings and with collaborative activities. Want to be appreciated and recognized.',
-                'challenges' => 'May get distracted easily by social opportunities and have trouble focusing on boring tasks. Can overcommit to too many activities and struggle with follow-through. Might care too much about being liked. Sometimes forget important details or deadlines. Can benefit from better organization, time management, and focusing on finishing what they start.',
-                'learning' => 'Learn best in groups, through discussion, and with interactive activities. Need social interaction and variety to stay engaged. Excel in presentations, group projects, and anything involving people. Struggle with solo studying and quiet environments. Remember information better through stories and personal connections.',
-                'strengths_for_teens' => 'Amazing at making new friends anywhere, public speaking and presentations, cheering people up when they\'re down, creative activities and performing arts, getting people excited about ideas or events, being the social glue that brings groups together, and naturally connecting with all types of people.',
-                'advice' => 'Your social skills and enthusiasm are magnetic - people love your positive energy! Use your gift for connecting people to build amazing friendships and teams. Remember to follow through on commitments, not just start things excitedly. Your optimism is contagious, but it\'s okay to be real about challenges too. Keep spreading joy - the world needs your light!'
+                'characteristics' => 'Enthusiastic, optimistic, outgoing, persuasive, and naturally social. Love being around people, making friends easily, and bringing energy to every situation.',
+                'motivations' => 'Motivated by social recognition, being liked, having fun, connecting with lots of people, and expressing creativity.',
+                'challenges' => 'May get distracted easily by social opportunities. Can overcommit and struggle with follow-through. Can benefit from better organization and focusing on finishing what they start.',
+                'learning' => 'Learn best in groups, through discussion, and with interactive activities. Need social interaction and variety to stay engaged. Excel in presentations and group projects.',
+                'strengths_for_teens' => 'Amazing at making new friends, public speaking, cheering people up, creative activities, getting people excited about ideas, and being the social glue that brings groups together.',
+                'advice' => 'Your social skills and enthusiasm are magnetic - people love your positive energy! Remember to follow through on commitments, not just start things excitedly. Your optimism is contagious!'
             ),
             'S' => array(
                 'name' => 'Steadiness',
-                'characteristics' => 'Patient, supportive, reliable, calm, and loyal. Excellent team players who value stability, harmony, and helping others. Great listeners who create peaceful environments. Steady and consistent in everything they do. Prefer cooperation over competition.',
-                'motivations' => 'Motivated by cooperation, helping others, maintaining stability, and building lasting relationships. Love being part of a supportive team where everyone gets along. Value security, predictability, and peaceful environments. Want to be needed and appreciated for their support and loyalty.',
-                'challenges' => 'May avoid change or new situations even when needed. Can have trouble saying no or setting boundaries. Might stay in uncomfortable situations to avoid conflict. Sometimes too sensitive to criticism. May need others to push them to try new things. Can benefit from expressing opinions more directly, embracing change gradually, and speaking up about own needs.',
-                'learning' => 'Learn best in stable, supportive environments with patient instruction. Prefer step-by-step guidance and time to practice. Excel when helping classmates or working in collaborative groups. Struggle with high-pressure competition or rapid changes. Need encouragement and reassurance when learning new things.',
-                'strengths_for_teens' => 'Incredible at being the friend everyone can count on, listening when others need to talk, staying calm when everyone else is stressed, being patient with difficult people, creating peaceful environments, team sports where cooperation matters, and remembering to check on friends who are struggling.',
-                'advice' => 'You\'re the steady, loyal friend everyone needs - never underestimate how valuable that is! Your calm presence helps others feel safe and supported. Don\'t be afraid to try new things - change can be good! It\'s okay to say no sometimes and put your needs first. Your patience and support make you an amazing friend and teammate. Keep being the rock others rely on!'
+                'characteristics' => 'Patient, supportive, reliable, calm, and loyal. Excellent team players who value stability, harmony, and helping others.',
+                'motivations' => 'Motivated by cooperation, helping others, maintaining stability, and building lasting relationships.',
+                'challenges' => 'May avoid change or new situations. Can have trouble saying no or setting boundaries. Can benefit from expressing opinions more directly and embracing change gradually.',
+                'learning' => 'Learn best in stable, supportive environments with patient instruction. Prefer step-by-step guidance and time to practice. Excel when helping classmates or working in collaborative groups.',
+                'strengths_for_teens' => 'Incredible at being the friend everyone can count on, listening, staying calm under stress, being patient, creating peaceful environments, and team sports where cooperation matters.',
+                'advice' => 'You\'re the steady, loyal friend everyone needs! Your calm presence helps others feel safe. Don\'t be afraid to try new things - change can be good! It\'s okay to say no sometimes.'
             ),
             'C' => array(
                 'name' => 'Conscientiousness',
-                'characteristics' => 'Analytical, precise, systematic, quality-focused, and detail-oriented. Love accuracy, following procedures, and doing things the right way. Careful thinkers who research thoroughly before deciding. High standards for themselves and their work. Prefer logic and facts over emotions.',
-                'motivations' => 'Motivated by getting things right, achieving high quality, following proper procedures, mastering subjects deeply, and being seen as competent and accurate. Love detailed work where precision matters. Value expertise and correctness. Want clear standards and expectations.',
-                'challenges' => 'May be too perfectionist and never feel work is good enough. Can worry too much about making mistakes. Sometimes overly critical of self and others. Might get stuck in analysis paralysis, researching forever without deciding. May miss big picture by focusing on details. Can benefit from accepting that "good enough" is sometimes okay, being less self-critical, and moving forward without perfect information.',
-                'learning' => 'Learn best with clear standards, detailed instructions, and time for thorough study. Prefer independent research, reading, and mastering subjects deeply. Excel at detail-oriented subjects like math, science, and technical topics. Need time to process and verify information. Value accuracy over speed.',
-                'strengths_for_teens' => 'Outstanding at detail-oriented subjects like math, science, and coding, research projects where accuracy matters, producing high-quality work consistently, catching errors others miss, following complex instructions perfectly, planning thoroughly before acting, and maintaining high standards.',
-                'advice' => 'Your attention to detail and high standards are impressive gifts - quality matters! Remember that perfection isn\'t always possible or necessary - sometimes "good enough" really is good enough. Don\'t be so hard on yourself when you make mistakes - everyone does! Your analytical mind will take you far in technical fields. Trust yourself more and worry less. You\'re doing better than you think!'
+                'characteristics' => 'Analytical, precise, systematic, quality-focused, and detail-oriented. Love accuracy, following procedures, and doing things the right way.',
+                'motivations' => 'Motivated by getting things right, achieving high quality, following proper procedures, and mastering subjects deeply.',
+                'challenges' => 'May be too perfectionist. Can worry too much about making mistakes. Can benefit from accepting that "good enough" is sometimes okay and being less self-critical.',
+                'learning' => 'Learn best with clear standards, detailed instructions, and time for thorough study. Prefer independent research, reading, and mastering subjects deeply.',
+                'strengths_for_teens' => 'Outstanding at detail-oriented subjects, research projects, producing high-quality work, catching errors, following complex instructions, and maintaining high standards.',
+                'advice' => 'Your attention to detail and high standards are impressive! Remember that perfection isn\'t always necessary. Don\'t be so hard on yourself when you make mistakes. Your analytical mind will take you far!'
             )
         );
 
         return isset($disc_data[$primary]) ? $disc_data[$primary] : array(
-            'name' => 'Balanced',
-            'characteristics' => 'A balanced blend of personality styles',
-            'motivations' => 'Flexible motivations across different situations',
-            'challenges' => 'Individual challenges and growth opportunities',
-            'learning' => 'Adaptable learning style',
-            'strengths_for_teens' => 'Versatile strengths',
+            'name' => 'Balanced', 'characteristics' => 'A balanced blend of personality styles',
+            'motivations' => 'Flexible motivations', 'challenges' => 'Individual growth opportunities',
+            'learning' => 'Adaptable learning style', 'strengths_for_teens' => 'Versatile strengths',
             'advice' => 'Your balanced approach is valuable!'
         );
     }
 
+    /* ================================================================
+       FALLBACK SUMMARY — with section markers
+       ================================================================ */
     private function generate_fallback_summary($mbti_type, $disc_scores, $week) {
-        $summary = "Steve says: Welcome to your Week {$week} personality results! ";
+        $summary = '';
         
         if ($mbti_type) {
-            $mbti_context = $this->get_mbti_type_context($mbti_type);
-            $summary .= "You're an {$mbti_type} - {$mbti_context['nickname']}. ";
-            $summary .= $mbti_context['description'] . " ";
-            $summary .= "Your strengths include: " . $mbti_context['strengths'] . " ";
+            $ctx = $this->get_mbti_type_context($mbti_type);
+            
+            $summary .= "[SECTION:Who You Are]\n";
+            $summary .= "Steve says: Welcome to your Who Am I results — and wow, what a brilliant start! ";
+            $summary .= "You are {$ctx['nickname']}, and you belong to the {$ctx['group']} family. ";
+            $summary .= $ctx['description'] . "\n\n";
+            
+            $summary .= "[SECTION:Your Strengths]\n";
+            $summary .= "Let's talk about your strengths, because you've got some seriously impressive ones: ";
+            $summary .= $ctx['strengths'] . "\n\n";
+            
+            $summary .= "[SECTION:Learning & School]\n";
+            $summary .= "Here's how you learn best: " . $ctx['learning_style'] . "\n\n";
+            
+            $summary .= "[SECTION:Friends & Relationships]\n";
+            $summary .= "Here's how you connect with others: " . $ctx['communication'] . "\n\n";
+            
+            $summary .= "[SECTION:Your Growth Edge]\n";
+            $summary .= $ctx['teen_advice'] . " ";
+            $summary .= "Remember — every single personality type on this planet is needed, and yours is absolutely essential. ";
+            $summary .= "The world needs people exactly like you!\n\n- Steve";
+        } else {
+            $summary .= "[SECTION:Your Results]\n";
+            $summary .= "Steve says: Welcome to your Who Am I results! ";
+            $summary .= "You've completed the quiz and that's a great first step in understanding yourself better. ";
+            $summary .= "Every personality type is unique and valuable — and so are you!\n\n- Steve";
         }
-        
-        if ($disc_scores) {
-            $disc_context = $this->get_disc_style_context($disc_scores['primary']);
-            $primary = $disc_scores['primary'];
-            $summary .= "Your primary DISC style is {$primary} - {$disc_context['name']}. ";
-            $summary .= $disc_context['characteristics'] . " ";
-            $summary .= $disc_context['advice'];
-        }
-        
-        $summary .= "\n\n- Steve";
         
         return $summary;
     }
@@ -989,7 +966,6 @@ final class MFSD_Personality_Test {
         $start_time = microtime(true);
         error_log('MFSD Personality Test: Calling AI with prompt length: ' . strlen($prompt));
         
-        // Use same approach as RAG plugin - check for $GLOBALS['mwai']
         if (!isset($GLOBALS['mwai'])) {
             error_log('MFSD Personality Test: MWAI plugin not available in $GLOBALS');
             $this->log_ai_call('FAILED', 'MWAI not available', strlen($prompt), 0, 0);
@@ -1027,7 +1003,6 @@ final class MFSD_Personality_Test {
             'elapsed_ms' => $elapsed_ms
         );
         
-        // Store last 10 AI calls in transient (expires in 1 day)
         $logs = get_transient('mfsd_ptest_ai_calls') ?: array();
         array_unshift($logs, $log_entry);
         $logs = array_slice($logs, 0, 10);
@@ -1079,34 +1054,26 @@ final class MFSD_Personality_Test {
 
         if (isset($_POST['mfsd_ptest_clear_user_data'])) {
             check_admin_referer('mfsd_ptest_clear_user');
-            
             $user_id = (int)$_POST['user_id'];
             $week = isset($_POST['week']) ? (int)$_POST['week'] : 0;
-            
             $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
             $res_table = $wpdb->prefix . self::TBL_RESULTS;
             
             if ($week > 0) {
                 $wpdb->delete($ans_table, array('user_id' => $user_id, 'week_num' => $week));
                 $wpdb->delete($res_table, array('user_id' => $user_id, 'week_num' => $week));
-                // Clear ordering progress for this specific week's task slug
                 if ( function_exists( 'mfsd_get_task_order_row' ) ) {
-                    $wpdb->delete(
-                        $wpdb->prefix . 'mfsd_task_progress',
-                        array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $week )
-                    );
+                    $wpdb->delete($wpdb->prefix . 'mfsd_task_progress',
+                        array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $week ));
                 }
                 echo '<div class="notice notice-success"><p>Cleared Week ' . $week . ' data for User ID ' . $user_id . '</p></div>';
             } else {
                 $wpdb->delete($ans_table, array('user_id' => $user_id));
                 $wpdb->delete($res_table, array('user_id' => $user_id));
-                // Clear ordering progress for all personality test weeks
                 if ( function_exists( 'mfsd_get_task_order_row' ) ) {
                     for ( $w = 1; $w <= 6; $w++ ) {
-                        $wpdb->delete(
-                            $wpdb->prefix . 'mfsd_task_progress',
-                            array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $w )
-                        );
+                        $wpdb->delete($wpdb->prefix . 'mfsd_task_progress',
+                            array( 'student_id' => $user_id, 'task_slug' => 'personality_test_week_' . $w ));
                     }
                 }
                 echo '<div class="notice notice-success"><p>Cleared all test data for User ID ' . $user_id . '</p></div>';
@@ -1118,7 +1085,6 @@ final class MFSD_Personality_Test {
             if ($_POST['confirm_clear'] === 'DELETE ALL DATA') {
                 $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
                 $res_table = $wpdb->prefix . self::TBL_RESULTS;
-                
                 $wpdb->query("TRUNCATE TABLE $ans_table");
                 $wpdb->query("TRUNCATE TABLE $res_table");
                 echo '<div class="notice notice-success"><p><strong>All test data has been cleared!</strong></p></div>';
@@ -1128,7 +1094,6 @@ final class MFSD_Personality_Test {
         }
 
         $questions = $wpdb->get_results("SELECT * FROM $table ORDER BY q_type, q_order", ARRAY_A);
-
         include plugin_dir_path(__FILE__) . 'admin-page.php';
     }
 
@@ -1140,12 +1105,9 @@ final class MFSD_Personality_Test {
             'q_order' => (int)$data['q_order'],
             'q_type' => sanitize_text_field($data['q_type']),
             'q_text' => sanitize_textarea_field($data['q_text']),
-            'w1' => isset($data['w1']) ? 1 : 0,
-            'w2' => isset($data['w2']) ? 1 : 0,
-            'w3' => isset($data['w3']) ? 1 : 0,
-            'w4' => isset($data['w4']) ? 1 : 0,
-            'w5' => isset($data['w5']) ? 1 : 0,
-            'w6' => isset($data['w6']) ? 1 : 0,
+            'w1' => isset($data['w1']) ? 1 : 0, 'w2' => isset($data['w2']) ? 1 : 0,
+            'w3' => isset($data['w3']) ? 1 : 0, 'w4' => isset($data['w4']) ? 1 : 0,
+            'w5' => isset($data['w5']) ? 1 : 0, 'w6' => isset($data['w6']) ? 1 : 0,
         );
 
         if ($data['q_type'] === 'MBTI') {
@@ -1153,10 +1115,8 @@ final class MFSD_Personality_Test {
             $insert_data['mbti_letter'] = sanitize_text_field($data['mbti_letter']);
         } elseif ($data['q_type'] === 'DISC') {
             $mapping = array(
-                'D' => (float)$data['disc_d'],
-                'I' => (float)$data['disc_i'],
-                'S' => (float)$data['disc_s'],
-                'C' => (float)$data['disc_c'],
+                'D' => (float)$data['disc_d'], 'I' => (float)$data['disc_i'],
+                'S' => (float)$data['disc_s'], 'C' => (float)$data['disc_c'],
             );
             $insert_data['disc_mapping'] = json_encode($mapping);
         }
@@ -1171,16 +1131,12 @@ final class MFSD_Personality_Test {
 
         foreach ($data['questions'] as $q_id => $weeks) {
             $update = array(
-                'w1' => isset($weeks['w1']) ? 1 : 0,
-                'w2' => isset($weeks['w2']) ? 1 : 0,
-                'w3' => isset($weeks['w3']) ? 1 : 0,
-                'w4' => isset($weeks['w4']) ? 1 : 0,
-                'w5' => isset($weeks['w5']) ? 1 : 0,
-                'w6' => isset($weeks['w6']) ? 1 : 0,
+                'w1' => isset($weeks['w1']) ? 1 : 0, 'w2' => isset($weeks['w2']) ? 1 : 0,
+                'w3' => isset($weeks['w3']) ? 1 : 0, 'w4' => isset($weeks['w4']) ? 1 : 0,
+                'w5' => isset($weeks['w5']) ? 1 : 0, 'w6' => isset($weeks['w6']) ? 1 : 0,
             );
             $wpdb->update($table, $update, array('id' => (int)$q_id));
         }
-
         echo '<div class="notice notice-success"><p>Week settings updated!</p></div>';
     }
 }
