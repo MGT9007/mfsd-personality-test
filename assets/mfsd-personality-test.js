@@ -31,6 +31,14 @@
     'ESFP':{name:'Entertainer',family:'Explorers',familyColor:'#e4ae3a'}
   };
 
+  // Avatar image filenames — stored in assets/avatars/
+  const AVATAR_FILES = {
+    'ISTJ':'Logistician.png', 'ISFJ':'Defender.png', 'ESTJ':'Executive.png', 'ESFJ':'Consul.png',
+    'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'Debater.png',
+    'INFJ':'Advocate.png',    'INFP':'Mediator.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
+    'ISTP':'Virtuoso.png',    'ISFP':'Adventurer.png', 'ESTP':'Entrepreneur.png','ESFP':'Entertainer.png'
+  };
+
   const FAMILY_DESCRIPTIONS = {
     'Analysts':'Intuitive and Thinking personality types, known for their rationality, impartiality, and intellectual excellence.',
     'Diplomats':'Intuitive and Feeling personality types, known for their empathy, diplomatic skills, and passionate idealism.',
@@ -409,13 +417,24 @@
       const card = el("div","rag-card");
       card.appendChild(el("h2","rag-title","Who Am I (Part 1) — Your Results"));
 
-      // Personality header
+      // Personality header with avatar
       if (sd.mbti_type) {
         const p = PROFILES[sd.mbti_type] || {name:'Unique',family:'Individual',familyColor:'#666'};
         const desc = DESCRIPTIONS[sd.mbti_type] || 'A unique personality!';
 
         const hs = el("div","ptest-result-header");
         hs.style.cssText = "margin:20px 0;padding:24px;border-radius:12px;text-align:center;background:linear-gradient(135deg," + p.familyColor + "22," + p.familyColor + "11);border:2px solid " + p.familyColor + ";";
+
+        // Avatar image
+        const avatarFile = AVATAR_FILES[sd.mbti_type];
+        if (cfg.avatarsBaseUrl && avatarFile) {
+          const avatarImg = document.createElement("img");
+          avatarImg.src = cfg.avatarsBaseUrl + avatarFile;
+          avatarImg.alt = "The " + p.name;
+          avatarImg.style.cssText = "width:160px;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.15));";
+          avatarImg.onerror = function() { this.style.display = 'none'; };
+          hs.appendChild(avatarImg);
+        }
 
         const fl = el("div",""); fl.style.cssText = "font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:" + p.familyColor + ";margin-bottom:8px;";
         fl.textContent = "You are part of the " + p.family + " family"; hs.appendChild(fl);
