@@ -107,7 +107,7 @@
   }
 
   /* ================================================================
-     INTRO SCREEN — "Who Am I", avatar grid, personality families
+     SCREEN 1 — Intro: "Who Am I" + AI message + question count
      ================================================================ */
   async function renderIntro() {
     console.log('renderIntro called, week =', week);
@@ -144,7 +144,7 @@
       card.appendChild(introBox);
     }
 
-    // Question count — NO "MBTI questions" label
+    // Question count
     if (introData.total_questions) {
       const infoBox = el("div","rag-sub");
       infoBox.style.cssText = "margin:12px 0;padding:10px;background:#f0f8ff;border-radius:6px;";
@@ -152,10 +152,27 @@
       card.appendChild(infoBox);
     }
 
-    // ── Avatar image grid ──
+    // Next button → goes to Screen 2 (families)
+    const btn = el("button","rag-btn","Next");
+    btn.onclick = () => renderFamilies();
+    card.appendChild(btn);
+
+    wrap.appendChild(card);
+    root.replaceChildren(wrap);
+  }
+
+  /* ================================================================
+     SCREEN 2 — Avatar image + Steve explains the 4 families
+     ================================================================ */
+  function renderFamilies() {
+    const wrap = el("div","rag-wrap");
+    const card = el("div","rag-card");
+    card.appendChild(el("h2","rag-title","Meet the 16 Personality Types"));
+
+    // Avatar image
     if (cfg.avatarImageUrl) {
       const avatarContainer = el("div","ptest-avatar-grid-container");
-      avatarContainer.style.cssText = "margin:20px 0;text-align:center;";
+      avatarContainer.style.cssText = "margin:16px 0;text-align:center;";
       const avatarImg = document.createElement("img");
       avatarImg.src = cfg.avatarImageUrl;
       avatarImg.alt = "The 16 Personality Types";
@@ -164,48 +181,52 @@
       card.appendChild(avatarContainer);
     }
 
-    // ── Personality families explanation ──
-    const familiesSection = el("div","ptest-families-section");
-    familiesSection.style.cssText = "margin:20px 0;";
+    // Steve Says — explains the families in his voice
+    const steveBox = el("div","rag-ai");
+    steveBox.style.cssText = "background:#fff8e6;border:1px solid #ffd966;border-left:4px solid #f0ad4e;padding:16px;border-radius:8px;line-height:1.7;margin:20px 0;font-size:14px;color:#333;white-space:normal;";
 
-    const familiesTitle = el("h3","");
-    familiesTitle.style.cssText = "margin:0 0 12px;font-size:18px;color:#2c3e50;";
-    familiesTitle.textContent = "There are 4 personality families — which one are you?";
-    familiesSection.appendChild(familiesTitle);
+    const steveIntro = el("div","");
+    steveIntro.style.cssText = "margin-bottom:14px;";
+    steveIntro.textContent = "Steve says: Right, here's how it works! Every person fits into one of 4 personality families, and each family has 4 different personality types — that's 16 in total. Have a look at the characters above and see if any of them remind you of yourself. Here's what each family is all about:";
+    steveBox.appendChild(steveIntro);
 
     const familyOrder = ['Analysts','Diplomats','Sentinels','Explorers'];
     const familyColors = { 'Analysts':'#88619a', 'Diplomats':'#33a474', 'Sentinels':'#4298b4', 'Explorers':'#e4ae3a' };
 
+    const familySteve = {
+      'Analysts': "The Analysts are the big thinkers — the Architect, the Logician, the Commander, and the Debater. If you love solving puzzles, asking \"why?\", and coming up with smart strategies, you might be one of these. They're known for their brainpower, their logic, and their ability to see things others miss.",
+      'Diplomats': "The Diplomats are the heart of any group — the Advocate, the Mediator, the Protagonist, and the Campaigner. These are the people who really care about others, want to make the world a better place, and have incredible imagination. If you're the kind of person your friends come to when they need someone to listen, this might be your family.",
+      'Sentinels': "The Sentinels are the ones who keep everything running smoothly — the Logistician, the Defender, the Executive, and the Consul. They're practical, reliable, and get things done. If you're the kind of person who keeps their promises, makes plans, and is always there when people need you, you could be a Sentinel.",
+      'Explorers': "The Explorers are the adventurers — the Virtuoso, the Adventurer, the Entrepreneur, and the Entertainer. They love trying new things, living in the moment, and bringing energy wherever they go. If you're hands-on, spontaneous, and always up for something exciting, this could be your crew."
+    };
+
     familyOrder.forEach(family => {
-      const fc = el("div","ptest-family-card");
-      fc.style.cssText = "margin:10px 0;padding:12px 16px;border-radius:8px;border-left:4px solid " + familyColors[family] + ";background:#fafafa;";
+      const block = el("div","ptest-family-explain");
+      block.style.cssText = "margin:12px 0;padding:12px 14px;border-radius:8px;border-left:4px solid " + familyColors[family] + ";background:rgba(255,255,255,0.6);";
 
       const fn = el("strong","");
-      fn.style.cssText = "font-size:16px;color:" + familyColors[family] + ";";
+      fn.style.cssText = "font-size:15px;color:" + familyColors[family] + ";display:block;margin-bottom:4px;";
       fn.textContent = family;
-      fc.appendChild(fn);
+      block.appendChild(fn);
 
-      const fd = el("p","");
-      fd.style.cssText = "margin:4px 0 6px;font-size:14px;color:#555;line-height:1.5;";
-      fd.textContent = FAMILY_DESCRIPTIONS[family];
-      fc.appendChild(fd);
+      const fd = el("span","");
+      fd.style.cssText = "font-size:14px;color:#444;line-height:1.6;";
+      fd.textContent = familySteve[family];
+      block.appendChild(fd);
 
-      const row = el("div","");
-      row.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;";
-      FAMILY_MEMBERS[family].forEach(code => {
-        const chip = el("span","");
-        chip.style.cssText = "display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;color:white;background:" + familyColors[family] + ";";
-        chip.textContent = PROFILES[code].name;
-        row.appendChild(chip);
-      });
-      fc.appendChild(row);
-      familiesSection.appendChild(fc);
+      steveBox.appendChild(block);
     });
 
-    card.appendChild(familiesSection);
+    const steveClose = el("div","");
+    steveClose.style.cssText = "margin-top:14px;font-weight:500;";
+    steveClose.textContent = "So which family do YOU belong to? Let's find out! 👊";
+    steveBox.appendChild(steveClose);
 
-    // Begin Test
-    const btn = el("button","rag-btn","Begin Test");
+    card.appendChild(steveBox);
+
+    // Start Test button
+    const btn = el("button","rag-btn","Start Test");
+    btn.style.cssText = "border:1px solid #111;background:#111;color:#fff;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:15px;font-weight:600;transition:background 0.2s;";
     btn.onclick = async () => {
       showLoading('Loading your questions...');
       try {
