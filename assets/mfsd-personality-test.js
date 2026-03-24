@@ -34,8 +34,8 @@
   // Avatar image filenames — stored in assets/avatars/
   const AVATAR_FILES = {
     'ISTJ':'Logistician.png', 'ISFJ':'Defender.png', 'ESTJ':'Executive.png', 'ESFJ':'Consul.png',
-    'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'DebaterFemale.png',
-    'INFJ':'Advocate.png',    'INFP':'Mediator.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
+    'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'Debater.png',
+    'INFJ':'Advocate.png',    'INFP':'Mediatorv2.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
     'ISTP':'Virtuoso.png',    'ISFP':'Adventurer.png', 'ESTP':'Entrepreneur.png','ESFP':'Entertainer.png'
   };
 
@@ -402,6 +402,12 @@
   /* ================================================================
      RESULTS — tabbed, no MBTI codes
      ================================================================ */
+  // Store summary data so both screens can access it
+  let summaryCache = null;
+
+  /* ================================================================
+     RESULTS SCREEN 1 — Personality reveal (family, avatar, name)
+     ================================================================ */
   async function renderSummary() {
     showLoading('Generating your results...');
     try {
@@ -412,6 +418,8 @@
       const sd = await sr.json();
       if (!sd || !sd.ok) { hideLoading(); alert("Summary failed: " + (sd.error||'Unknown error')); return; }
       hideLoading();
+
+      summaryCache = sd;
 
       const wrap = el("div","rag-wrap");
       const card = el("div","rag-card");
@@ -457,82 +465,129 @@
         card.appendChild(hs);
       }
 
-      // Tabbed AI summary
-      if (sd.ai_summary) {
-        const sections = parseSummarySections(sd.ai_summary);
-        if (sections.length > 1) {
-          const tc = el("div","ptest-results-tabs"); tc.style.cssText = "margin:24px 0;";
-          const tnav = el("div","ptest-tab-nav");
-          const tcont = el("div","ptest-tab-content-area"); tcont.style.cssText = "padding:20px 0;";
-
-          sections.forEach((sec, i) => {
-            const tb = el("button","ptest-result-tab" + (i===0?" active":""));
-            tb.textContent = sec.title; tb.dataset.tabIndex = i;
-            tb.onclick = function() {
-              tnav.querySelectorAll('.ptest-result-tab').forEach(b => b.classList.remove('active'));
-              tcont.querySelectorAll('.ptest-tab-panel').forEach(p => p.style.display = 'none');
-              this.classList.add('active');
-              tcont.querySelector('[data-panel="'+i+'"]').style.display = 'block';
-            };
-            tnav.appendChild(tb);
-
-            const panel = el("div","ptest-tab-panel"); panel.dataset.panel = i;
-            panel.style.display = i===0?'block':'none';
-            const pc2 = el("div","rag-ai");
-            pc2.style.cssText = "background:#f9fafc;border:1px dashed #cbd5e1;padding:18px;border-radius:8px;white-space:pre-line;line-height:1.7;";
-            pc2.textContent = sec.content; panel.appendChild(pc2);
-            tcont.appendChild(panel);
-          });
-          tc.appendChild(tnav); tc.appendChild(tcont); card.appendChild(tc);
-        } else {
-          const sb = el("div","rag-ai"); sb.textContent = sd.ai_summary; card.appendChild(sb);
-        }
-      }
-
-      // DISC polar plot — only show if there are actual non-zero scores
-      const hasDiscScores = sd.disc_scores && (sd.disc_scores.D > 0 || sd.disc_scores.I > 0 || sd.disc_scores.S > 0 || sd.disc_scores.C > 0);
-      if (hasDiscScores) {
-        const ds = el("div","ptest-disc-section"); ds.style.cssText = "margin:20px 0;padding:20px;background:#f8f9fa;border-radius:8px;";
-        const dt = el("h3",""); dt.style.cssText = "margin:0 0 16px;color:#2c3e50;font-size:20px;text-align:center;";
-        dt.textContent = "Your Communication Style"; ds.appendChild(dt);
-
-        const plotC = el("div","disc-plot-container"); plotC.style.cssText = "display:flex;flex-direction:column;align-items:center;margin:20px 0;";
-        const canvas = createDISCPolarPlot(sd.disc_scores);
-        if (canvas) plotC.appendChild(canvas);
-        ds.appendChild(plotC);
-
-        const bd = el("div","disc-breakdown"); bd.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;";
-        ['D','I','S','C'].forEach(letter => {
-          const score = sd.disc_scores[letter];
-          const bar = el("div","disc-bar"); bar.style.cssText = "background:linear-gradient(to top,#4a90e2,#357abd);border-radius:8px;padding:12px 8px;color:white;text-align:center;display:flex;flex-direction:column;justify-content:space-between;min-height:120px;";
-          const l2 = el("div",""); l2.style.cssText = "font-weight:600;font-size:16px;"; l2.textContent = letter; bar.appendChild(l2);
-          const s2 = el("div",""); s2.style.cssText = "font-size:24px;font-weight:bold;margin:8px 0;"; s2.textContent = Math.round(score)+"%"; bar.appendChild(s2);
-          const n2 = el("div",""); n2.style.cssText = "font-size:11px;opacity:0.9;"; n2.textContent = getDISCName(letter); bar.appendChild(n2);
-          bd.appendChild(bar);
-        });
-        ds.appendChild(bd); card.appendChild(ds);
-      }
-
-      // Chatbot
-      if (chatSource) {
-        const cw = el("div","rag-chatwrap");
-        const cc = chatSource.cloneNode(true); cc.style.display="block"; cc.id="mfsd-ptest-chat-summary";
-        cc.querySelectorAll('.mwai-conversation, .mwai-chat').forEach(m => { const mc=m.querySelector('.mwai-messages'); if(mc) mc.innerHTML=''; });
-        const cp = el("div",""); cp.style.cssText = "margin:20px 0 10px;padding:15px;background:#fff9e6;border-left:4px solid #ffc107;border-radius:4px;";
-        const cpt = el("p",""); cpt.style.cssText = "margin:0;color:#856404;font-weight:600;";
-        cpt.textContent = "Have questions about your results? Ask SteveGPT below!";
-        cp.appendChild(cpt); card.appendChild(cp); cw.appendChild(cc); card.appendChild(cw);
-        setTimeout(function() {
-          var ce = document.getElementById("mfsd-ptest-chat-summary");
-          if (ce) ce.querySelectorAll('.mwai-ai, .mwai-reply').forEach(m => {
-            if (m.textContent.trim().match(/^Hi!?\s*How can I help/i))
-              m.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask! - SteveGPT";
-          });
-        }, 500);
-      }
+      // "View My Summary" button
+      const btn = el("button","rag-btn","View My Summary");
+      btn.style.cssText = "border:1px solid #111;background:#111;color:#fff;border-radius:10px;padding:12px 24px;cursor:pointer;font-size:16px;font-weight:600;transition:background 0.2s;display:block;margin:20px auto 0;";
+      btn.onclick = () => renderSummaryDetail();
+      card.appendChild(btn);
 
       wrap.appendChild(card); root.replaceChildren(wrap);
     } catch (err) { hideLoading(); alert('Failed to load summary: ' + err.message); }
+  }
+
+  /* ================================================================
+     RESULTS SCREEN 2 — Tabbed Steve Says summary + DISC + chatbot
+     ================================================================ */
+  function renderSummaryDetail() {
+    const sd = summaryCache;
+    if (!sd) return;
+
+    const wrap = el("div","rag-wrap");
+    const card = el("div","rag-card");
+
+    // Small header reminder at top
+    if (sd.mbti_type) {
+      const p = PROFILES[sd.mbti_type] || {name:'Unique',family:'Individual',familyColor:'#666'};
+      const mini = el("div","");
+      mini.style.cssText = "display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;";
+
+      const avatarFile = AVATAR_FILES[sd.mbti_type];
+      if (cfg.avatarsBaseUrl && avatarFile) {
+        const aw = document.createElement("div");
+        aw.style.cssText = "width:48px;height:48px;border-radius:50%;background:" + p.familyColor + ";display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;";
+        const ai = document.createElement("img");
+        ai.src = cfg.avatarsBaseUrl + avatarFile;
+        ai.alt = p.name;
+        ai.style.cssText = "width:40px;height:40px;object-fit:contain;";
+        ai.onerror = function() { aw.style.display = 'none'; };
+        aw.appendChild(ai); mini.appendChild(aw);
+      }
+
+      const miniText = el("div","");
+      const mt1 = el("div",""); mt1.style.cssText = "font-size:18px;font-weight:700;color:#2c3e50;"; mt1.textContent = "The " + p.name; miniText.appendChild(mt1);
+      const mt2 = el("div",""); mt2.style.cssText = "font-size:13px;color:" + p.familyColor + ";font-weight:500;"; mt2.textContent = p.family + " family"; miniText.appendChild(mt2);
+      mini.appendChild(miniText);
+
+      card.appendChild(mini);
+    }
+
+    card.appendChild(el("h2","rag-title","What Steve Says About You"));
+
+    // Tabbed AI summary
+    if (sd.ai_summary) {
+      const sections = parseSummarySections(sd.ai_summary);
+      if (sections.length > 1) {
+        const tc = el("div","ptest-results-tabs"); tc.style.cssText = "margin:16px 0;";
+        const tnav = el("div","ptest-tab-nav");
+        const tcont = el("div","ptest-tab-content-area"); tcont.style.cssText = "padding:20px 0;";
+
+        sections.forEach((sec, i) => {
+          const tb = el("button","ptest-result-tab" + (i===0?" active":""));
+          tb.textContent = sec.title; tb.dataset.tabIndex = i;
+          tb.onclick = function() {
+            tnav.querySelectorAll('.ptest-result-tab').forEach(b => b.classList.remove('active'));
+            tcont.querySelectorAll('.ptest-tab-panel').forEach(p => p.style.display = 'none');
+            this.classList.add('active');
+            tcont.querySelector('[data-panel="'+i+'"]').style.display = 'block';
+          };
+          tnav.appendChild(tb);
+
+          const panel = el("div","ptest-tab-panel"); panel.dataset.panel = i;
+          panel.style.display = i===0?'block':'none';
+          const pc2 = el("div","rag-ai");
+          pc2.style.cssText = "background:#f9fafc;border:1px dashed #cbd5e1;padding:18px;border-radius:8px;white-space:pre-line;line-height:1.7;";
+          pc2.textContent = sec.content; panel.appendChild(pc2);
+          tcont.appendChild(panel);
+        });
+        tc.appendChild(tnav); tc.appendChild(tcont); card.appendChild(tc);
+      } else {
+        const sb = el("div","rag-ai"); sb.textContent = sd.ai_summary; card.appendChild(sb);
+      }
+    }
+
+    // DISC polar plot — only if non-zero scores
+    const hasDiscScores = sd.disc_scores && (sd.disc_scores.D > 0 || sd.disc_scores.I > 0 || sd.disc_scores.S > 0 || sd.disc_scores.C > 0);
+    if (hasDiscScores) {
+      const ds = el("div","ptest-disc-section"); ds.style.cssText = "margin:20px 0;padding:20px;background:#f8f9fa;border-radius:8px;";
+      const dt = el("h3",""); dt.style.cssText = "margin:0 0 16px;color:#2c3e50;font-size:20px;text-align:center;";
+      dt.textContent = "Your Communication Style"; ds.appendChild(dt);
+
+      const plotC = el("div","disc-plot-container"); plotC.style.cssText = "display:flex;flex-direction:column;align-items:center;margin:20px 0;";
+      const canvas = createDISCPolarPlot(sd.disc_scores);
+      if (canvas) plotC.appendChild(canvas);
+      ds.appendChild(plotC);
+
+      const bd = el("div","disc-breakdown"); bd.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;";
+      ['D','I','S','C'].forEach(letter => {
+        const score = sd.disc_scores[letter];
+        const bar = el("div","disc-bar"); bar.style.cssText = "background:linear-gradient(to top,#4a90e2,#357abd);border-radius:8px;padding:12px 8px;color:white;text-align:center;display:flex;flex-direction:column;justify-content:space-between;min-height:120px;";
+        const l2 = el("div",""); l2.style.cssText = "font-weight:600;font-size:16px;"; l2.textContent = letter; bar.appendChild(l2);
+        const s2 = el("div",""); s2.style.cssText = "font-size:24px;font-weight:bold;margin:8px 0;"; s2.textContent = Math.round(score)+"%"; bar.appendChild(s2);
+        const n2 = el("div",""); n2.style.cssText = "font-size:11px;opacity:0.9;"; n2.textContent = getDISCName(letter); bar.appendChild(n2);
+        bd.appendChild(bar);
+      });
+      ds.appendChild(bd); card.appendChild(ds);
+    }
+
+    // Chatbot
+    if (chatSource) {
+      const cw = el("div","rag-chatwrap");
+      const cc = chatSource.cloneNode(true); cc.style.display="block"; cc.id="mfsd-ptest-chat-summary";
+      cc.querySelectorAll('.mwai-conversation, .mwai-chat').forEach(m => { const mc=m.querySelector('.mwai-messages'); if(mc) mc.innerHTML=''; });
+      const cp = el("div",""); cp.style.cssText = "margin:20px 0 10px;padding:15px;background:#fff9e6;border-left:4px solid #ffc107;border-radius:4px;";
+      const cpt = el("p",""); cpt.style.cssText = "margin:0;color:#856404;font-weight:600;";
+      cpt.textContent = "Have questions about your results? Ask SteveGPT below!";
+      cp.appendChild(cpt); card.appendChild(cp); cw.appendChild(cc); card.appendChild(cw);
+      setTimeout(function() {
+        var ce = document.getElementById("mfsd-ptest-chat-summary");
+        if (ce) ce.querySelectorAll('.mwai-ai, .mwai-reply').forEach(m => {
+          if (m.textContent.trim().match(/^Hi!?\s*How can I help/i))
+            m.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask! - SteveGPT";
+        });
+      }, 500);
+    }
+
+    wrap.appendChild(card); root.replaceChildren(wrap);
   }
 
   /* ── Parse [SECTION:Title] markers ── */
