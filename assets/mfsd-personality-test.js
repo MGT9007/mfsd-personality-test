@@ -34,7 +34,7 @@
   // Avatar image filenames — stored in assets/avatars/
   const AVATAR_FILES = {
     'ISTJ':'Logistician.png', 'ISFJ':'Defender.png', 'ESTJ':'Executive.png', 'ESFJ':'Consul.png',
-    'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'Debater.png',
+    'INTJ':'Architect.png',   'INTP':'Logician.png',  'ENTJ':'Commander.png', 'ENTP':'DebaterFemale.png',
     'INFJ':'Advocate.png',    'INFP':'Mediator.png',  'ENFJ':'Protagonist.png','ENFP':'Campaigner.png',
     'ISTP':'Virtuoso.png',    'ISFP':'Adventurer.png', 'ESTP':'Entrepreneur.png','ESFP':'Entertainer.png'
   };
