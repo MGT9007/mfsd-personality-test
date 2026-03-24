@@ -21,12 +21,10 @@
         $res_table = $wpdb->prefix . 'mfsd_ptest_results';
         
         if ($week > 0) {
-            // Clear specific week
             $wpdb->delete($ans_table, array('user_id' => $user_id, 'week_num' => $week));
             $wpdb->delete($res_table, array('user_id' => $user_id, 'week_num' => $week));
             echo '<div class="notice notice-success"><p>Cleared Week ' . $week . ' data for User ID ' . $user_id . '</p></div>';
         } else {
-            // Clear all weeks for user
             $wpdb->delete($ans_table, array('user_id' => $user_id));
             $wpdb->delete($res_table, array('user_id' => $user_id));
             echo '<div class="notice notice-success"><p>Cleared all test data for User ID ' . $user_id . '</p></div>';
@@ -55,105 +53,38 @@
     ?>
     
     <style>
-        .ptest-admin-tabs {
-            margin: 20px 0;
-            border-bottom: 1px solid #ccc;
-        }
-        .ptest-admin-tabs button {
-            padding: 10px 20px;
-            border: none;
-            background: #f0f0f0;
-            cursor: pointer;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            margin-right: 5px;
-        }
-        .ptest-admin-tabs button.active {
-            background: #fff;
-            border: 1px solid #ccc;
-            border-bottom: 1px solid #fff;
-            position: relative;
-            bottom: -1px;
-        }
-        .ptest-tab-content {
-            display: none;
-            padding: 20px 0;
-        }
-        .ptest-tab-content.active {
-            display: block;
-        }
-        .ptest-questions-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .ptest-questions-table th,
-        .ptest-questions-table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        .ptest-questions-table th {
-            background: #f5f5f5;
-            font-weight: 600;
-        }
-        .ptest-week-checkboxes label {
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .ptest-add-form {
-            background: #f9f9f9;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-        .ptest-form-row {
-            margin-bottom: 15px;
-        }
-        .ptest-form-row label {
-            display: inline-block;
-            width: 150px;
-            font-weight: 600;
-        }
-        .ptest-form-row input[type="text"],
-        .ptest-form-row textarea,
-        .ptest-form-row select {
-            width: calc(100% - 160px);
-            max-width: 600px;
-        }
-        .ptest-form-row textarea {
-            height: 80px;
-        }
-        .ptest-disc-mapping {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            max-width: 600px;
-        }
-        .ptest-disc-mapping label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        .ptest-disc-mapping input {
-            width: 100%;
-        }
-        .ptest-mbti-fields {
-            display: none;
-        }
-        .ptest-disc-fields {
-            display: none;
-        }
-        .ptest-question-text {
-            max-width: 400px;
-        }
-        .button-delete {
-            color: #a00;
-        }
-        .button-delete:hover {
-            color: #dc3232;
-        }
+        .ptest-admin-tabs { margin: 20px 0; border-bottom: 1px solid #ccc; }
+        .ptest-admin-tabs button { padding: 10px 20px; border: none; background: #f0f0f0; cursor: pointer; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 5px; }
+        .ptest-admin-tabs button.active { background: #fff; border: 1px solid #ccc; border-bottom: 1px solid #fff; position: relative; bottom: -1px; }
+        .ptest-tab-content { display: none; padding: 20px 0; }
+        .ptest-tab-content.active { display: block; }
+        .ptest-questions-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .ptest-questions-table th, .ptest-questions-table td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        .ptest-questions-table th { background: #f5f5f5; font-weight: 600; }
+        .ptest-week-checkboxes label { display: inline-block; margin-right: 10px; }
+        .ptest-add-form { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0; }
+        .ptest-form-row { margin-bottom: 15px; }
+        .ptest-form-row label { display: inline-block; width: 150px; font-weight: 600; }
+        .ptest-form-row input[type="text"], .ptest-form-row textarea, .ptest-form-row select { width: calc(100% - 160px); max-width: 600px; }
+        .ptest-form-row textarea { height: 80px; }
+        .ptest-disc-mapping { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 600px; }
+        .ptest-disc-mapping label { display: block; font-weight: 600; margin-bottom: 5px; }
+        .ptest-disc-mapping input { width: 100%; }
+        .ptest-mbti-fields { display: none; }
+        .ptest-disc-fields { display: none; }
+        .ptest-question-text { max-width: 300px; }
+        .button-delete { color: #a00; }
+        .button-delete:hover { color: #dc3232; }
+        .ptest-detail-label { font-size: 11px; color: #888; display: block; margin-bottom: 2px; }
+        .ptest-detail-value { font-size: 13px; font-weight: 500; }
+        .ptest-option-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; margin: 1px 0; }
+        .ptest-option-a { background: #e8f4fd; color: #185fa5; }
+        .ptest-option-b { background: #eaf3de; color: #3b6d11; }
+        .ptest-mbti-either-or { background: #f0f8ff; border: 1px solid #b5d4f4; border-radius: 6px; padding: 16px; margin-top: 10px; }
+        .ptest-either-or-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+        .ptest-either-or-row > div { background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 12px; }
+        .ptest-either-or-row label { display: block; font-weight: 600; margin-bottom: 6px; }
+        .ptest-either-or-row input[type="text"], .ptest-either-or-row select { width: 100%; }
     </style>
 
     <div class="ptest-admin-tabs">
@@ -164,10 +95,12 @@
         <button class="ptest-tab-btn" data-tab="debug">AI Debug</button>
     </div>
 
-    <!-- Manage Questions Tab -->
+    <!-- ================================================================
+         MANAGE QUESTIONS TAB
+         ================================================================ -->
     <div id="tab-manage" class="ptest-tab-content active">
         <h2>Question Configuration</h2>
-        <p>Configure which questions appear in which weeks. Check the box to enable a question for that week.</p>
+        <p>Configure which questions appear in which weeks. MBTI questions show either/or options; DISC questions show contribution mapping.</p>
 
         <form method="post" action="">
             <?php wp_nonce_field('mfsd_ptest_update'); ?>
@@ -179,6 +112,7 @@
                         <th>Type</th>
                         <th>Order</th>
                         <th>Question</th>
+                        <th>Options / Mapping</th>
                         <th>W1</th>
                         <th>W2</th>
                         <th>W3</th>
@@ -195,6 +129,31 @@
                         <td><strong><?php echo esc_html($q['q_type']); ?></strong></td>
                         <td><?php echo esc_html($q['q_order']); ?></td>
                         <td class="ptest-question-text"><?php echo esc_html($q['q_text']); ?></td>
+                        <td style="min-width: 200px;">
+                            <?php if ($q['q_type'] === 'MBTI'): ?>
+                                <?php 
+                                    $axis_labels = array('1' => 'E/I', '2' => 'S/N', '3' => 'T/F', '4' => 'J/P');
+                                    $axis = $q['mbti_axis'] ?? '';
+                                ?>
+                                <span class="ptest-detail-label">Axis: <?php echo esc_html($axis_labels[$axis] ?? $axis); ?></span>
+                                <?php if (!empty($q['mbti_option_a_text'])): ?>
+                                    <span class="ptest-option-pill ptest-option-a">A: <?php echo esc_html($q['mbti_option_a_text']); ?> → <?php echo esc_html($q['mbti_letter']); ?></span><br>
+                                    <span class="ptest-option-pill ptest-option-b">B: <?php echo esc_html($q['mbti_option_b_text']); ?> → <?php echo esc_html($q['mbti_letter_b']); ?></span>
+                                <?php else: ?>
+                                    <span class="ptest-detail-label">Letter: <?php echo esc_html($q['mbti_letter']); ?></span>
+                                    <em style="font-size: 11px; color: #d63638;">⚠️ Old format — no option texts</em>
+                                <?php endif; ?>
+                            <?php elseif ($q['q_type'] === 'DISC'): ?>
+                                <?php
+                                    $mapping = json_decode($q['disc_mapping'] ?? '{}', true);
+                                    if ($mapping):
+                                        $parts = array();
+                                        foreach ($mapping as $k => $v) if ($v > 0) $parts[] = "$k=$v";
+                                        echo '<span class="ptest-detail-value">' . esc_html(implode(', ', $parts) ?: 'No mapping') . '</span>';
+                                    endif;
+                                ?>
+                            <?php endif; ?>
+                        </td>
                         <?php for ($w = 1; $w <= 6; $w++): ?>
                         <td>
                             <input type="checkbox" 
@@ -220,7 +179,9 @@
         </form>
     </div>
 
-    <!-- Add Question Tab -->
+    <!-- ================================================================
+         ADD QUESTION TAB
+         ================================================================ -->
     <div id="tab-add" class="ptest-tab-content">
         <h2>Add New Question</h2>
 
@@ -231,8 +192,8 @@
                 <label for="q_type">Question Type:</label>
                 <select name="q_type" id="q_type" required>
                     <option value="">-- Select Type --</option>
-                    <option value="MBTI">MBTI (Myers-Briggs)</option>
-                    <option value="DISC">DISC</option>
+                    <option value="MBTI">MBTI (Either/Or Personality)</option>
+                    <option value="DISC">DISC (Agree/Disagree Scale)</option>
                 </select>
             </div>
 
@@ -243,39 +204,73 @@
 
             <div class="ptest-form-row">
                 <label for="q_text">Question Text:</label>
-                <textarea name="q_text" id="q_text" required></textarea>
+                <textarea name="q_text" id="q_text" required placeholder="e.g. Do you prefer to spend your free time home alone or out with others?"></textarea>
             </div>
 
-            <!-- MBTI-specific fields -->
+            <!-- ── MBTI-specific fields: Either/Or format ── -->
             <div id="mbti-fields" class="ptest-mbti-fields">
-                <h3>MBTI Configuration</h3>
+                <h3>MBTI Either/Or Configuration</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
+                    Each question presents two choices. Each choice maps to a letter on one axis. The student picks one.
+                </p>
                 
                 <div class="ptest-form-row">
                     <label for="mbti_axis">Axis:</label>
                     <select name="mbti_axis" id="mbti_axis">
-                        <option value="1">1 - Extraversion/Introversion (E/I)</option>
-                        <option value="2">2 - Sensing/Intuition (S/N)</option>
-                        <option value="3">3 - Thinking/Feeling (T/F)</option>
-                        <option value="4">4 - Judging/Perceiving (J/P)</option>
+                        <option value="1">1 — Extraversion (E) / Introversion (I)</option>
+                        <option value="2">2 — Sensing (S) / Intuition (N)</option>
+                        <option value="3">3 — Thinking (T) / Feeling (F)</option>
+                        <option value="4">4 — Judging (J) / Perceiving (P)</option>
                     </select>
                 </div>
 
-                <div class="ptest-form-row">
-                    <label for="mbti_letter">Letter:</label>
-                    <select name="mbti_letter" id="mbti_letter">
-                        <option value="E">E - Extraversion</option>
-                        <option value="I">I - Introversion</option>
-                        <option value="S">S - Sensing</option>
-                        <option value="N">N - Intuition</option>
-                        <option value="T">T - Thinking</option>
-                        <option value="F">F - Feeling</option>
-                        <option value="J">J - Judging</option>
-                        <option value="P">P - Perceiving</option>
-                    </select>
+                <div class="ptest-mbti-either-or">
+                    <p style="margin: 0 0 12px; font-weight: 600; font-size: 15px;">The two options the student chooses between:</p>
+                    
+                    <div class="ptest-either-or-row">
+                        <div>
+                            <label for="mbti_option_a_text">Option A — Display Text:</label>
+                            <input type="text" name="mbti_option_a_text" id="mbti_option_a_text" placeholder="e.g. Home alone">
+                            
+                            <label for="mbti_letter" style="margin-top: 10px;">Option A maps to letter:</label>
+                            <select name="mbti_letter" id="mbti_letter">
+                                <option value="E">E — Extraversion</option>
+                                <option value="I" selected>I — Introversion</option>
+                                <option value="S">S — Sensing</option>
+                                <option value="N">N — Intuition</option>
+                                <option value="T">T — Thinking</option>
+                                <option value="F">F — Feeling</option>
+                                <option value="J">J — Judging</option>
+                                <option value="P">P — Perceiving</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="mbti_option_b_text">Option B — Display Text:</label>
+                            <input type="text" name="mbti_option_b_text" id="mbti_option_b_text" placeholder="e.g. Out with others">
+                            
+                            <label for="mbti_letter_b" style="margin-top: 10px;">Option B maps to letter:</label>
+                            <select name="mbti_letter_b" id="mbti_letter_b">
+                                <option value="E" selected>E — Extraversion</option>
+                                <option value="I">I — Introversion</option>
+                                <option value="S">S — Sensing</option>
+                                <option value="N">N — Intuition</option>
+                                <option value="T">T — Thinking</option>
+                                <option value="F">F — Feeling</option>
+                                <option value="J">J — Judging</option>
+                                <option value="P">P — Perceiving</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="background: #fff3cd; padding: 10px 14px; border-radius: 4px; border-left: 3px solid #f0ad4e; font-size: 13px; color: #856404;">
+                        <strong>How scoring works:</strong> 3 questions per axis, student picks A or B for each. 
+                        Whichever letter appears 2+ times out of 3 wins that axis position. 
+                        Make sure Option A and Option B map to opposite letters on the same axis.
+                    </div>
                 </div>
             </div>
 
-            <!-- DISC-specific fields -->
+            <!-- ── DISC-specific fields (unchanged) ── -->
             <div id="disc-fields" class="ptest-disc-fields">
                 <h3>DISC Contribution Mapping</h3>
                 <p>Enter how much this question contributes to each DISC dimension (usually 0 or 1):</p>
@@ -320,7 +315,9 @@
         </form>
     </div>
 
-    <!-- Settings Tab -->
+    <!-- ================================================================
+         SETTINGS TAB
+         ================================================================ -->
     <div id="tab-settings" class="ptest-tab-content">
         <h2>Plugin Settings</h2>
 
@@ -372,7 +369,9 @@
         </form>
     </div>
 
-    <!-- Data Management Tab -->
+    <!-- ================================================================
+         DATA MANAGEMENT TAB
+         ================================================================ -->
     <div id="tab-data" class="ptest-tab-content">
         <h2>Data Management & Testing Tools</h2>
 
@@ -396,7 +395,7 @@
             ?>
         </div>
 
-        <!-- In-Progress Tests (Answers Not Yet Completed) -->
+        <!-- In-Progress Tests -->
         <div class="ptest-add-form">
             <h3>In-Progress Tests (Users with Answers)</h3>
             <p>These users have answered questions but may not have completed the test yet.</p>
@@ -468,7 +467,6 @@
                 </p>
             </form>
 
-            <!-- Helper: Find User ID -->
             <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #f0ad4e; border-radius: 4px;">
                 <strong>Need to find a User ID?</strong>
                 <p style="margin: 10px 0 0 0;">
@@ -478,7 +476,7 @@
             </div>
         </div>
 
-        <!-- View Recent Test Results -->
+        <!-- Recent Completed Tests -->
         <div class="ptest-add-form">
             <h3>Recent Completed Tests (With Results)</h3>
             <p>These users have fully completed the test and received their personality summary.</p>
@@ -494,7 +492,7 @@
 
             if ($recent_results) {
                 echo '<table class="ptest-questions-table">';
-                echo '<thead><tr><th>User</th><th>Week</th><th>Type</th><th>MBTI</th><th>DISC</th><th>Date</th><th>Actions</th></tr></thead>';
+                echo '<thead><tr><th>User</th><th>Week</th><th>Type</th><th>Personality</th><th>DISC</th><th>Date</th><th>Actions</th></tr></thead>';
                 echo '<tbody>';
                 foreach ($recent_results as $result) {
                     echo '<tr>';
@@ -516,7 +514,7 @@
             ?>
         </div>
 
-        <!-- DANGER ZONE: Clear All Data -->
+        <!-- DANGER ZONE -->
         <div class="ptest-add-form" style="background: #fee; border-left: 4px solid #dc3232;">
             <h3 style="color: #dc3232;">⚠️ Danger Zone: Clear All Test Data</h3>
             <p><strong style="color: #a00;">WARNING:</strong> This will permanently delete ALL test results for ALL users. This cannot be undone!</p>
@@ -541,7 +539,9 @@
         </div>
     </div>
 
-    <!-- AI Debug Tab -->
+    <!-- ================================================================
+         AI DEBUG TAB
+         ================================================================ -->
     <div id="tab-debug" class="ptest-tab-content">
         <h2>AI Integration Debug</h2>
 
@@ -553,39 +553,26 @@
             echo '<div class="ptest-add-form" style="background: #f0f8ff; border-left: 4px solid #2271b1;">';
             echo '<h3>AI Test Results</h3>';
             
-            // Check if MWAI is available
             if (!isset($GLOBALS['mwai'])) {
                 echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Available</strong></p>';
                 echo '<p>The AI Engine plugin is not active or not installed.</p>';
             } else {
                 echo '<p style="color: green;"><strong>✅ MWAI Plugin Available</strong></p>';
                 
-                // Create a test instance to access methods
-                require_once plugin_dir_path(__FILE__) . 'mfsd-personality-test.php';
                 $test_plugin = MFSD_Personality_Test::instance();
-                
-                // Use reflection to access private methods
                 $reflection = new ReflectionClass($test_plugin);
                 $build_prompt = $reflection->getMethod('build_summary_prompt');
                 $build_prompt->setAccessible(true);
                 $call_ai = $reflection->getMethod('call_ai');
                 $call_ai->setAccessible(true);
                 
-                // Test with sample data
-                $test_mbti = 'ESTJ';
-                $test_disc = array(
-                    'D' => 45.5,
-                    'I' => 20.0,
-                    'S' => 15.5,
-                    'C' => 19.0,
-                    'primary' => 'D'
-                );
+                $test_mbti = 'INFP';
+                $test_disc = array('D' => 15.0, 'I' => 20.0, 'S' => 45.5, 'C' => 19.5, 'primary' => 'S');
                 
                 echo '<h4>Test Parameters:</h4>';
-                echo '<p><strong>MBTI Type:</strong> ' . $test_mbti . '</p>';
+                echo '<p><strong>Personality Type:</strong> ' . $test_mbti . ' (The Mediator — Diplomats)</p>';
                 echo '<p><strong>DISC Scores:</strong> D=' . $test_disc['D'] . '%, I=' . $test_disc['I'] . '%, S=' . $test_disc['S'] . '%, C=' . $test_disc['C'] . '%</p>';
                 
-                // Generate prompt
                 $prompt = $build_prompt->invoke($test_plugin, $test_mbti, $test_disc, 1);
                 
                 echo '<h4>Generated Prompt:</h4>';
@@ -595,7 +582,6 @@
                 echo '<pre style="background: #f5f5f5; padding: 15px; overflow: auto; white-space: pre-wrap; font-size: 12px;">' . htmlspecialchars($prompt) . '</pre>';
                 echo '</details>';
                 
-                // Call AI
                 try {
                     $start_time = microtime(true);
                     $ai_response = $call_ai->invoke($test_plugin, $prompt);
@@ -609,7 +595,7 @@
                         echo '<p><strong>Response Length:</strong> ' . strlen($ai_response) . ' characters</p>';
                         
                         if (strlen($ai_response) < 200) {
-                            echo '<p style="color: orange;"><strong>⚠️ Warning: Response is short (< 200 chars) - fallback will be used</strong></p>';
+                            echo '<p style="color: orange;"><strong>⚠️ Warning: Response is short (< 200 chars) — fallback will be used</strong></p>';
                         }
                         
                         echo '<div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;">';
@@ -617,13 +603,12 @@
                         echo '<p>' . nl2br(htmlspecialchars($ai_response)) . '</p>';
                         echo '</div>';
                     } else {
-                        echo '<p style="color: red;"><strong>❌ AI returned null/empty - fallback will be used</strong></p>';
+                        echo '<p style="color: red;"><strong>❌ AI returned null/empty — fallback will be used</strong></p>';
                     }
                     
                 } catch (Exception $e) {
                     echo '<p style="color: red;"><strong>❌ AI Call Failed</strong></p>';
                     echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
-                    echo '<details><summary>Full Error Trace</summary><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre></details>';
                 }
             }
             
@@ -634,7 +619,7 @@
         <!-- Test AI Button -->
         <div class="ptest-add-form">
             <h3>Test AI Integration</h3>
-            <p>Click the button below to test if AI is working properly with sample personality data.</p>
+            <p>Click the button below to test if AI is working properly with sample personality data (INFP / Steadiness).</p>
             
             <form method="post" action="">
                 <?php wp_nonce_field('mfsd_ptest_test_ai'); ?>
@@ -655,14 +640,33 @@
                 echo '<p>Please install and activate the <strong>AI Engine</strong> plugin.</p>';
             } else {
                 echo '<p style="color: green;"><strong>✅ MWAI Plugin Detected</strong></p>';
-                
-                try {
-                    $mwai = $GLOBALS['mwai'];
-                    echo '<p style="color: green;"><strong>✅ MWAI Instance Available via $GLOBALS</strong></p>';
-                } catch (Exception $e) {
-                    echo '<p style="color: red;"><strong>❌ Cannot access MWAI instance</strong></p>';
-                    echo '<p>Error: ' . htmlspecialchars($e->getMessage()) . '</p>';
+                echo '<p style="color: green;"><strong>✅ MWAI Instance Available via $GLOBALS</strong></p>';
+            }
+            ?>
+        </div>
+
+        <!-- Recent AI Calls -->
+        <div class="ptest-add-form">
+            <h3>Recent AI Call Log</h3>
+            <?php
+            $ai_logs = get_transient('mfsd_ptest_ai_calls') ?: array();
+            if ($ai_logs) {
+                echo '<table class="ptest-questions-table">';
+                echo '<thead><tr><th>Time</th><th>Status</th><th>Prompt</th><th>Response</th><th>Duration</th></tr></thead>';
+                echo '<tbody>';
+                foreach ($ai_logs as $log) {
+                    $color = $log['status'] === 'SUCCESS' ? 'green' : ($log['status'] === 'ERROR' ? 'red' : 'orange');
+                    echo '<tr>';
+                    echo '<td style="font-size:12px;">' . esc_html($log['timestamp']) . '</td>';
+                    echo '<td style="color:' . $color . ';font-weight:600;">' . esc_html($log['status']) . '</td>';
+                    echo '<td>' . number_format($log['prompt_length']) . ' chars</td>';
+                    echo '<td>' . number_format($log['response_length']) . ' chars</td>';
+                    echo '<td>' . number_format($log['elapsed_ms']) . 'ms</td>';
+                    echo '</tr>';
                 }
+                echo '</tbody></table>';
+            } else {
+                echo '<p style="color: #666; font-style: italic;">No AI calls logged yet.</p>';
             }
             ?>
         </div>
@@ -670,19 +674,15 @@
         <!-- Recent Test Results -->
         <div class="ptest-add-form">
             <h3>Recent Actual Test Results</h3>
-            <p>View the last 5 actual student test results to see what AI summaries were generated.</p>
-            
             <?php
             global $wpdb;
             $res_table = $wpdb->prefix . 'mfsd_ptest_results';
-            
             $recent = $wpdb->get_results("
                 SELECT r.*, u.user_login 
                 FROM $res_table r
                 LEFT JOIN {$wpdb->prefix}users u ON r.user_id = u.ID
                 WHERE r.test_type = 'COMBINED'
-                ORDER BY r.created_at DESC
-                LIMIT 5
+                ORDER BY r.created_at DESC LIMIT 5
             ");
             
             if ($recent) {
@@ -690,17 +690,10 @@
                     echo '<div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;">';
                     echo '<p><strong>User:</strong> ' . esc_html($result->user_login) . ' (ID: ' . $result->user_id . ')</p>';
                     echo '<p><strong>Week:</strong> ' . $result->week_num . '</p>';
-                    echo '<p><strong>MBTI:</strong> ' . esc_html($result->mbti_type) . ' | <strong>DISC:</strong> ' . esc_html($result->disc_primary) . '</p>';
+                    echo '<p><strong>Personality:</strong> ' . esc_html($result->mbti_type) . ' | <strong>DISC:</strong> ' . esc_html($result->disc_primary) . '</p>';
                     echo '<p><strong>Summary Length:</strong> ' . strlen($result->ai_summary) . ' characters</p>';
-                    
-                    if (strlen($result->ai_summary) < 200) {
-                        echo '<p style="color: orange;">⚠️ Short summary - likely using fallback</p>';
-                    }
-                    
-                    echo '<details>';
-                    echo '<summary style="cursor: pointer; font-weight: 600;">View Summary</summary>';
-                    echo '<p style="margin-top: 10px; line-height: 1.6;">' . nl2br(esc_html($result->ai_summary)) . '</p>';
-                    echo '</details>';
+                    echo '<details><summary style="cursor:pointer;font-weight:600;">View Summary</summary>';
+                    echo '<p style="margin-top:10px;line-height:1.6;">' . nl2br(esc_html($result->ai_summary)) . '</p></details>';
                     echo '</div>';
                 }
             } else {
@@ -730,6 +723,22 @@
                 $('.ptest-mbti-fields').show();
             } else if (type === 'DISC') {
                 $('.ptest-disc-fields').show();
+            }
+        });
+
+        // Auto-set letter selects based on axis choice
+        var axisLetters = {
+            '1': { a: 'I', b: 'E' },
+            '2': { a: 'S', b: 'N' },
+            '3': { a: 'F', b: 'T' },
+            '4': { a: 'J', b: 'P' }
+        };
+
+        $('#mbti_axis').on('change', function() {
+            var axis = $(this).val();
+            if (axisLetters[axis]) {
+                $('#mbti_letter').val(axisLetters[axis].a);
+                $('#mbti_letter_b').val(axisLetters[axis].b);
             }
         });
     });
