@@ -739,6 +739,20 @@
       }, 500);
     }
 
+    // Navigation buttons
+    const navWrap   = el('div', 'ptest-nav-actions');
+    const badgesBtn = document.createElement('a');
+    badgesBtn.className   = 'rag-btn secondary';
+    badgesBtn.href        = cfg.urlBadges || 'https://mfsd.me/badges/';
+    badgesBtn.textContent = 'View My Badges';
+    const courseBtn = document.createElement('a');
+    courseBtn.className   = 'rag-btn';
+    courseBtn.href        = cfg.urlCourse || 'https://mfsd.me/about/parent-portal-home/?course_id=1';
+    courseBtn.textContent = 'Return to Course';
+    navWrap.appendChild(badgesBtn);
+    navWrap.appendChild(courseBtn);
+    card.appendChild(navWrap);
+
     wrap.appendChild(card);
     root.replaceChildren(wrap);
   }
