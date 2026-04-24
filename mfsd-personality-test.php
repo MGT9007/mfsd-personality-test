@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 8.1.0
+ * Version: 9.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '8.1.0';
+    const VERSION = '9.0.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -299,7 +299,7 @@ final class MFSD_Personality_Test {
         wp_enqueue_script('mfsd-personality-test');
         wp_enqueue_style('mfsd-personality-test');
 
-        $chat_html = do_shortcode('[mwai_chatbot id="chatbot-vxk8pu"]');
+        $chat_html = do_shortcode('[stevegpt_chatbot id="chatbot_69eb7ca000e67"]');
         return '<div id="mfsd-ptest-root"></div>'
              . '<div id="mfsd-ptest-chat-source" style="display:none">' . $chat_html . '</div>';
     }
@@ -693,16 +693,25 @@ final class MFSD_Personality_Test {
        AI CALL + LOGGING — unchanged
        ================================================================ */
     private function call_ai($prompt) {
-        $start = microtime(true);
-        if (!isset($GLOBALS['mwai'])) { $this->log_ai_call('FAILED','MWAI not available',strlen($prompt),0,0); return null; }
-        try {
-            $result = $GLOBALS['mwai']->simpleTextQuery($prompt);
-            $this->log_ai_call('SUCCESS','OK',strlen($prompt),strlen($result),round((microtime(true)-$start)*1000));
-            return $result;
-        } catch (Exception $e) {
-            $this->log_ai_call('ERROR',$e->getMessage(),strlen($prompt),0,round((microtime(true)-$start)*1000));
-            return null;
-        }
+    $start = microtime(true);
+    
+    // Use SteveGPT instead of MWAI - includes skills + context awareness
+    if (!isset($GLOBALS['stevegpt'])) { 
+        $this->log_ai_call('FAILED','SteveGPT not available',strlen($prompt),0,0); 
+        return null; 
+    }
+    
+    try {
+        // Get the Who Am I chatbot (has personality types + DISC skills + context)
+        $chatbot = SteveGPT_Chatbot::get('chatbot_69eb7ca000e67');
+        $result = $chatbot->simpleTextQuery($prompt);
+        
+        $this->log_ai_call('SUCCESS','OK',strlen($prompt),strlen($result),round((microtime(true)-$start)*1000));
+        return $result;
+    } catch (Exception $e) {
+        $this->log_ai_call('ERROR',$e->getMessage(),strlen($prompt),0,round((microtime(true)-$start)*1000));
+        return null;
+    }
     }
     
     private function log_ai_call($status, $msg, $plen, $rlen, $ms) {
