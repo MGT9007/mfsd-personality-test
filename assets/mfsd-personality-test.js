@@ -707,7 +707,7 @@
       card.appendChild(ds);
     }
 
-    // Chatbot
+    // Chatbot - MOVE it instead of cloning to prevent duplicates
     if (chatSource) {
       const cp  = el('div', 'rag-ai-question');
       const cpt = el('p', '');
@@ -717,24 +717,31 @@
       card.appendChild(cp);
 
       const cw = el('div', 'rag-chatwrap');
-      const cc = chatSource.cloneNode(true);
-      cc.style.display = 'block';
-      cc.id = 'mfsd-ptest-chat-summary';
-      cc.querySelectorAll('.mwai-conversation, .mwai-chat').forEach(function (m) {
-        var mc = m.querySelector('.mwai-messages');
-        if (mc) mc.innerHTML = '';
+      
+      // MOVE the chatbot (don't clone) - prevents duplicate containers
+      chatSource.style.display = 'block';
+      chatSource.id = 'mfsd-ptest-chat-summary';
+      
+      // Clear any initial messages
+      chatSource.querySelectorAll('.stevegpt-chat-messages .stevegpt-message').forEach(function (m) {
+        // Keep only the initial greeting, remove any others
+        if (m.classList.contains('stevegpt-message-assistant')) {
+          const firstMsg = chatSource.querySelector('.stevegpt-message-assistant');
+          if (m !== firstMsg) m.remove();
+        }
       });
-      cw.appendChild(cc);
+      
+      cw.appendChild(chatSource);
       card.appendChild(cw);
 
       setTimeout(function () {
         var ce = document.getElementById('mfsd-ptest-chat-summary');
         if (ce) {
-          ce.querySelectorAll('.mwai-ai, .mwai-reply').forEach(function (m) {
-            if (m.textContent.trim().match(/^Hi!?\s*How can I help/i)) {
-              m.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask! - SteveGPT";
-            }
-          });
+          // Update initial greeting if needed
+          const greeting = ce.querySelector('.stevegpt-message-text');
+          if (greeting && greeting.textContent.trim().match(/^How can I help/i)) {
+            greeting.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask!";
+          }
         }
       }, 500);
     }
