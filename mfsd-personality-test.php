@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.0.0
+ * Version: 9.1.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '9.0.0';
+    const VERSION = '9.1.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -299,9 +299,10 @@ final class MFSD_Personality_Test {
         wp_enqueue_script('mfsd-personality-test');
         wp_enqueue_style('mfsd-personality-test');
 
+       // Render chatbot directly - no hidden source needed
         $chat_html = do_shortcode('[stevegpt_chatbot id="chatbot_69eb7ca000e67"]');
-        return '<div id="mfsd-ptest-root"></div>'
-             . '<div id="mfsd-ptest-chat-source" style="display:none">' . $chat_html . '</div>';
+
+        return '<div id="mfsd-ptest-root">' . $chat_html . '</div>';
     }
 
     /* ================================================================
