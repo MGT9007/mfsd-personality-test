@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.3.0
+ * Version: 9.4.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '9.3.0';
+    const VERSION = '9.4.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -299,7 +299,37 @@ final class MFSD_Personality_Test {
         wp_enqueue_script('mfsd-personality-test');
         wp_enqueue_style('mfsd-personality-test');
 
-       $chat_html = do_shortcode('[stevegpt_chatbot id="chatbot_69eb7ca000e67"]');
+        // Inject student's existing personality results as context into the chat widget
+        $chat_context = '';
+        if ($current_user_id) {
+            global $wpdb;
+            $res_table   = $wpdb->prefix . self::TBL_RESULTS;
+            $ptest_result = $wpdb->get_row($wpdb->prepare(
+                "SELECT mbti_type, disc_primary FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED' LIMIT 1",
+                $current_user_id, $week
+            ), ARRAY_A);
+            if ($ptest_result && !empty($ptest_result['mbti_type'])) {
+                $mbti_ctx      = $this->get_mbti_type_context($ptest_result['mbti_type']);
+                $context_parts = [
+                    'Student context for the Who Am I personality quiz.',
+                    'Personality type: ' . $mbti_ctx['nickname'] . ' (' . $mbti_ctx['group'] . ' family).',
+                    $mbti_ctx['description'],
+                ];
+                if (!empty($ptest_result['disc_primary'])) {
+                    $disc_ctx        = $this->get_disc_style_context($ptest_result['disc_primary']);
+                    $context_parts[] = 'Communication style: ' . $disc_ctx['name'] . ' - ' . $disc_ctx['characteristics'];
+                }
+                $context_parts[] = 'Use this context to personalise your responses to this student.';
+                $raw_context     = implode(' ', $context_parts);
+                // Strip characters that would break the shortcode attribute
+                $chat_context = str_replace(['"', '[', ']', "\n", "\r"], ['', '', '', ' ', ''], $raw_context);
+            }
+        }
+
+        $chat_shortcode = $chat_context
+            ? '[stevegpt_chatbot id="chatbot_69eb7ca000e67" context="' . $chat_context . '"]'
+            : '[stevegpt_chatbot id="chatbot_69eb7ca000e67"]';
+        $chat_html = do_shortcode($chat_shortcode);
 
         return '<div id="mfsd-ptest-root"></div>'
         .'<div id="mfsd-ptest-chat-source" style="display:none">' . $chat_html . '</div>';
@@ -444,7 +474,7 @@ final class MFSD_Personality_Test {
         $prompt .= "Do NOT mention 'MBTI', 'Myers-Briggs', or 'DISC'. ";
         $prompt .= "Start your message with 'Steve says:' and keep the tone warm, encouraging, and age-appropriate.";
 
-        $intro = $this->call_ai($prompt);
+        $intro = $this->call_ai($prompt, 'chatbot_69fb3aee4a0be');
         if (!$intro) {
             $intro = "Steve says: Hey there, superstar! You're about to take a fun quiz that helps you discover what makes YOU uniquely awesome. Each question gives you two choices — just pick whichever one feels most like you. There are no wrong answers, so relax and be yourself! Let's do this! 👍😊";
         }
@@ -454,17 +484,19 @@ final class MFSD_Personality_Test {
     /* ── Question guidance — explains either/or questions ── */
     public function api_question_guidance($req) {
         $question_text = $req->get_param('question_text');
+        $user_id = get_current_user_id() ?: 0;
+        $start = microtime(true);
 
-        $prompt = "You are Steve Sallis, a motivational teacher-coach helping a 12-14 year old student with a personality quiz called 'Who Am I'. ";
-        $prompt .= "The question is: '{$question_text}'. ";
-        $prompt .= "This is an either/or question — the student picks whichever option feels most like them. ";
-        $prompt .= "Provide a brief (2-3 sentences) explanation to help them think about what the question is really asking. ";
-        $prompt .= "Start with 'Steve says:' — do NOT start with 'Great question' or similar. ";
-        $prompt .= "Use examples from their everyday life to make it click. ";
-        $prompt .= "Remind them to go with their gut — there's no right or wrong answer. ";
-        $prompt .= "Keep it simple and age-appropriate.";
+        try {
+            $chatbot = SteveGPT_Chatbot::get('chatbot_69fb3b7fa0fa2');
+            $prompt  = $chatbot->render_prompt(['question_text' => $question_text]);
+            $guidance = $chatbot->query($prompt, $user_id);
+            $this->log_ai_call('SUCCESS', 'OK', strlen($prompt), strlen($guidance), round((microtime(true) - $start) * 1000));
+        } catch (Exception $e) {
+            $this->log_ai_call('ERROR', $e->getMessage(), strlen((string) $question_text), 0, round((microtime(true) - $start) * 1000));
+            $guidance = null;
+        }
 
-        $guidance = $this->call_ai($prompt);
         return array('ok' => true,
             'guidance' => $guidance ?: "Steve says: Just think about what you'd naturally do — there's no right or wrong here, just go with whichever feels most like you! 😊");
     }
@@ -481,7 +513,7 @@ final class MFSD_Personality_Test {
         $prompt .= "Do NOT reference 'MBTI', 'Myers-Briggs', or 'DISC'. ";
         $prompt .= "Sign your response with '- SteveGPT' at the end.";
 
-        $response = $this->call_ai($prompt);
+        $response = $this->call_ai($prompt, 'chatbot_69eb7ca000e67');
         return array('ok' => true,
             'response' => $response ?: "Just think about which option feels most like the real you — trust your gut! - SteveGPT");
     }
@@ -527,7 +559,7 @@ final class MFSD_Personality_Test {
         $disc_scores = $this->calculate_disc($disc_answers);
 
         $summary_prompt = $this->build_summary_prompt($mbti_type, $disc_scores, $week);
-        $ai_summary = $this->call_ai($summary_prompt);
+        $ai_summary = $this->call_ai($summary_prompt, 'chatbot_69fb3bf9a176a');
 
         if (!$ai_summary || strlen($ai_summary) < 200) {
             $ai_summary = $this->generate_fallback_summary($mbti_type, $disc_scores, $week);
@@ -691,28 +723,20 @@ final class MFSD_Personality_Test {
     }
 
     /* ================================================================
-       AI CALL + LOGGING — unchanged
+       AI CALL + LOGGING
        ================================================================ */
-    private function call_ai($prompt) {
-    $start = microtime(true);
-    
-    // Use SteveGPT instead of MWAI - includes skills + context awareness
-    if (!isset($GLOBALS['stevegpt'])) { 
-        $this->log_ai_call('FAILED','SteveGPT not available',strlen($prompt),0,0); 
-        return null; 
-    }
-    
-    try {
-        // Get the Who Am I chatbot (has personality types + DISC skills + context)
-        $chatbot = SteveGPT_Chatbot::get('chatbot_69eb7ca000e67');
-        $result = $chatbot->simpleTextQuery($prompt);
-        
-        $this->log_ai_call('SUCCESS','OK',strlen($prompt),strlen($result),round((microtime(true)-$start)*1000));
-        return $result;
-    } catch (Exception $e) {
-        $this->log_ai_call('ERROR',$e->getMessage(),strlen($prompt),0,round((microtime(true)-$start)*1000));
-        return null;
-    }
+    private function call_ai(string $prompt, string $chatbot_id = 'chatbot_69eb7ca000e67'): ?string {
+        $start   = microtime(true);
+        $user_id = get_current_user_id() ?: 0;
+        try {
+            $chatbot = SteveGPT_Chatbot::get($chatbot_id);
+            $result  = $chatbot->query($prompt, $user_id);
+            $this->log_ai_call('SUCCESS', 'OK', strlen($prompt), strlen($result), round((microtime(true) - $start) * 1000));
+            return $result;
+        } catch (Exception $e) {
+            $this->log_ai_call('ERROR', $e->getMessage(), strlen($prompt), 0, round((microtime(true) - $start) * 1000));
+            return null;
+        }
     }
     
     private function log_ai_call($status, $msg, $plen, $rlen, $ms) {
