@@ -351,28 +351,25 @@
       renderDISCOptions(card, q);
     }
 
-    // Chatbot
+    // Chatbot — MOVE (don't clone) to preserve event listeners
     if (chatSource) {
       const cw = el('div', 'rag-chatwrap');
-      const cc = chatSource.cloneNode(true);
-      cc.style.display = 'block';
-      cc.id = 'mfsd-ptest-chat-' + idx;
-      cc.querySelectorAll('.mwai-conversation, .mwai-chat').forEach(function (m) {
-        const mc = m.querySelector('.mwai-messages');
-        if (mc) mc.innerHTML = '';
-      });
-      cw.appendChild(cc);
+
+      chatSource.style.display = 'block';
+      chatSource.id = 'mfsd-ptest-chat-' + idx;
+      chatSource.removeAttribute('data-conversation-id');
+
+      // Clear messages except the first greeting
+      const msgWrap = chatSource.querySelector('.stevegpt-chat-messages');
+      if (msgWrap) {
+        const msgs = msgWrap.querySelectorAll('.stevegpt-message');
+        msgs.forEach(function (m, i) { if (i > 0) m.remove(); });
+        const greeting = msgWrap.querySelector('.stevegpt-message-text');
+        if (greeting) greeting.textContent = "Need a hand with this question? Just ask me and I'll help you out!";
+      }
+
+      cw.appendChild(chatSource);
       card.appendChild(cw);
-      setTimeout(function () {
-        const ce = document.getElementById('mfsd-ptest-chat-' + idx);
-        if (ce) {
-          ce.querySelectorAll('.mwai-ai, .mwai-reply').forEach(function (m) {
-            if (m.textContent.trim().match(/^Hi!?\s*How can I help/i)) {
-              m.textContent = "Need a hand with this question? Just ask me and I'll help you out! - SteveGPT";
-            }
-          });
-        }
-      }, 500);
     }
 
     wrap.appendChild(card);
