@@ -359,10 +359,10 @@
       chatSource.id = 'mfsd-ptest-chat-' + idx;
       chatSource.removeAttribute('data-conversation-id');
 
-      // Clear messages except the first greeting
+      // Clear direct-child messages only — :scope > avoids gutting the typing indicator
       const msgWrap = chatSource.querySelector('.stevegpt-chat-messages');
       if (msgWrap) {
-        const msgs = msgWrap.querySelectorAll('.stevegpt-message');
+        const msgs = msgWrap.querySelectorAll(':scope > .stevegpt-message');
         msgs.forEach(function (m, i) { if (i > 0) m.remove(); });
         const greeting = msgWrap.querySelector('.stevegpt-message-text');
         if (greeting) greeting.textContent = "Need a hand with this question? Just ask me and I'll help you out!";
@@ -370,6 +370,12 @@
 
       cw.appendChild(chatSource);
       card.appendChild(cw);
+
+      // Re-focus input so Enter key works immediately after the chatbot is moved
+      setTimeout(function () {
+        var inp = chatSource.querySelector('.stevegpt-input-field');
+        if (inp) inp.focus();
+      }, 150);
     }
 
     wrap.appendChild(card);
@@ -719,26 +725,27 @@
       chatSource.style.display = 'block';
       chatSource.id = 'mfsd-ptest-chat-summary';
       
-      // Clear any initial messages
-      chatSource.querySelectorAll('.stevegpt-chat-messages .stevegpt-message').forEach(function (m) {
-        // Keep only the initial greeting, remove any others
-        if (m.classList.contains('stevegpt-message-assistant')) {
-          const firstMsg = chatSource.querySelector('.stevegpt-message-assistant');
-          if (m !== firstMsg) m.remove();
-        }
-      });
-      
+      // Clear direct-child messages only — avoids gutting the typing indicator
+      const sumMsgWrap = chatSource.querySelector('.stevegpt-chat-messages');
+      if (sumMsgWrap) {
+        const sumMsgs = sumMsgWrap.querySelectorAll(':scope > .stevegpt-message');
+        const firstMsg = sumMsgs[0] || null;
+        sumMsgs.forEach(function (m) { if (m !== firstMsg) m.remove(); });
+      }
+
       cw.appendChild(chatSource);
       card.appendChild(cw);
 
       setTimeout(function () {
         var ce = document.getElementById('mfsd-ptest-chat-summary');
         if (ce) {
-          // Update initial greeting if needed
           const greeting = ce.querySelector('.stevegpt-message-text');
           if (greeting && greeting.textContent.trim().match(/^How can I help/i)) {
             greeting.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask!";
           }
+          // Re-focus input so Enter key works immediately
+          var inp = ce.querySelector('.stevegpt-input-field');
+          if (inp) inp.focus();
         }
       }, 500);
     }
