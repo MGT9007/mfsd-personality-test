@@ -363,7 +363,6 @@
       // includes it in the system prompt. Must target .stevegpt-chatbot-container (not the
       // outer wrapper) and use setAttribute so jQuery's attr() picks it up on each send.
       var chatbotEl = chatSource.querySelector('.stevegpt-chatbot-container');
-      console.log('[PTEST] chatbotEl found:', !!chatbotEl, '| question:', q.q_text);
       if (chatbotEl) {
         if (!chatbotEl.dataset.baseContext) {
           chatbotEl.dataset.baseContext = chatbotEl.getAttribute('data-context') || '';
@@ -371,7 +370,6 @@
         var baseCtx = chatbotEl.dataset.baseContext;
         var questionCtx = 'The student is currently working on this personality question: "' + q.q_text + '"';
         chatbotEl.setAttribute('data-context', baseCtx ? baseCtx + ' ' + questionCtx : questionCtx);
-        console.log('[PTEST] data-context set to:', chatbotEl.getAttribute('data-context').substring(0, 120));
       }
 
       // Clear direct-child messages only — :scope > avoids gutting the typing indicator
