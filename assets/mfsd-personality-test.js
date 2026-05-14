@@ -359,14 +359,18 @@
       chatSource.id = 'mfsd-ptest-chat-' + idx;
       chatSource.removeAttribute('data-conversation-id');
 
-      // Stamp the current question into data-context so SteveGPT includes it in the prompt.
-      // Preserve any base context (student's personality results) that PHP baked in at render time.
-      if (!chatSource.dataset.baseContext) {
-        chatSource.dataset.baseContext = chatSource.dataset.context || '';
+      // Stamp the current question into data-context on the stevegpt container so SteveGPT
+      // includes it in the system prompt. Must target .stevegpt-chatbot-container (not the
+      // outer wrapper) and use setAttribute so jQuery's attr() picks it up on each send.
+      var chatbotEl = chatSource.querySelector('.stevegpt-chatbot-container');
+      if (chatbotEl) {
+        if (!chatbotEl.dataset.baseContext) {
+          chatbotEl.dataset.baseContext = chatbotEl.getAttribute('data-context') || '';
+        }
+        var baseCtx = chatbotEl.dataset.baseContext;
+        var questionCtx = 'The student is currently working on this personality question: "' + q.q_text + '"';
+        chatbotEl.setAttribute('data-context', baseCtx ? baseCtx + ' ' + questionCtx : questionCtx);
       }
-      var baseCtx = chatSource.dataset.baseContext;
-      var questionCtx = 'The student is currently working on this personality question: "' + q.q_text + '"';
-      chatSource.dataset.context = baseCtx ? baseCtx + ' ' + questionCtx : questionCtx;
 
       // Clear direct-child messages only — :scope > avoids gutting the typing indicator
       const msgWrap = chatSource.querySelector('.stevegpt-chat-messages');
