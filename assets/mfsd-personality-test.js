@@ -359,6 +359,15 @@
       chatSource.id = 'mfsd-ptest-chat-' + idx;
       chatSource.removeAttribute('data-conversation-id');
 
+      // Stamp the current question into data-context so SteveGPT includes it in the prompt.
+      // Preserve any base context (student's personality results) that PHP baked in at render time.
+      if (!chatSource.dataset.baseContext) {
+        chatSource.dataset.baseContext = chatSource.dataset.context || '';
+      }
+      var baseCtx = chatSource.dataset.baseContext;
+      var questionCtx = 'The student is currently working on this personality question: "' + q.q_text + '"';
+      chatSource.dataset.context = baseCtx ? baseCtx + ' ' + questionCtx : questionCtx;
+
       // Clear direct-child messages only — :scope > avoids gutting the typing indicator
       const msgWrap = chatSource.querySelector('.stevegpt-chat-messages');
       if (msgWrap) {
