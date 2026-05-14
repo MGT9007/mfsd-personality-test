@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.5.5
+ * Version: 9.5.6
  * Author: MisterT9007
  */
 
