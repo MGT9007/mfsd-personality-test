@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.5.7
+ * Version: 9.5.8
  * Author: MisterT9007
  */
 
@@ -299,13 +299,16 @@ final class MFSD_Personality_Test {
         wp_enqueue_script('mfsd-personality-test');
         wp_enqueue_style('mfsd-personality-test');
 
-        // Inject student's existing personality results as context into the chat widget
-        $chat_context = '';
+        // Inject student's existing personality results as context into the question chat widget
+        $chat_context  = '';
+        $mbti_ctx      = null;
+        $disc_ctx      = null;
+        $stored_summary = '';
         if ($current_user_id) {
             global $wpdb;
-            $res_table   = $wpdb->prefix . self::TBL_RESULTS;
+            $res_table    = $wpdb->prefix . self::TBL_RESULTS;
             $ptest_result = $wpdb->get_row($wpdb->prepare(
-                "SELECT mbti_type, disc_primary FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED' LIMIT 1",
+                "SELECT mbti_type, disc_primary, ai_summary FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED' LIMIT 1",
                 $current_user_id, $week
             ), ARRAY_A);
             if ($ptest_result && !empty($ptest_result['mbti_type'])) {
@@ -320,20 +323,45 @@ final class MFSD_Personality_Test {
                     $context_parts[] = 'Communication style: ' . $disc_ctx['name'] . ' - ' . $disc_ctx['characteristics'];
                 }
                 $context_parts[] = 'Use this context to personalise your responses to this student.';
-                $raw_context     = implode(' ', $context_parts);
-                // Strip characters that would break the shortcode attribute
+                $raw_context  = implode(' ', $context_parts);
                 $chat_context = str_replace(['"', '[', ']', "\n", "\r"], ['', '', '', ' ', ''], $raw_context);
+                $stored_summary = $ptest_result['ai_summary'] ?? '';
             }
         }
 
+        // Question chatbot
         $who_am_i_chatbot_id = get_option('mfsd_stevegpt_map_who_am_i_chatbot', 'chatbot_69eb7ca000e67');
         $chat_shortcode = $chat_context
             ? '[stevegpt_chatbot id="' . esc_attr($who_am_i_chatbot_id) . '" context="' . $chat_context . '"]'
             : '[stevegpt_chatbot id="' . esc_attr($who_am_i_chatbot_id) . '"]';
         $chat_html = do_shortcode($chat_shortcode);
 
+        // Summary chatbot — use render_prompt() to inject the full results + AI summary
+        $summary_chatbot_id = get_option('mfsd_stevegpt_map_who_am_i_summary_chat', 'chatbot_6a066d0d7209c');
+        $summary_context    = '';
+        if ($stored_summary && class_exists('SteveGPT_Chatbot')) {
+            try {
+                $summary_bot      = SteveGPT_Chatbot::get($summary_chatbot_id);
+                $personality_type = $mbti_ctx ? $mbti_ctx['nickname'] . ' (' . $mbti_ctx['group'] . ' family)' : '';
+                $disc_style       = $disc_ctx  ? $disc_ctx['name'] . ' - ' . $disc_ctx['characteristics']      : '';
+                $raw_sum_ctx      = $summary_bot->render_prompt([
+                    'personality_type' => $personality_type,
+                    'disc_style'       => $disc_style,
+                    'ai_summary'       => $stored_summary,
+                ]);
+                $summary_context = str_replace(['"', '[', ']', "\n", "\r"], ['', '', '', ' ', ''], $raw_sum_ctx);
+            } catch (Exception $e) {
+                // JS will stamp context after the summary API call for first-time students
+            }
+        }
+        $summary_shortcode = $summary_context
+            ? '[stevegpt_chatbot id="' . esc_attr($summary_chatbot_id) . '" context="' . $summary_context . '"]'
+            : '[stevegpt_chatbot id="' . esc_attr($summary_chatbot_id) . '"]';
+        $summary_chat_html = do_shortcode($summary_shortcode);
+
         return '<div id="mfsd-ptest-root"></div>'
-        .'<div id="mfsd-ptest-chat-source" style="display:none">' . $chat_html . '</div>';
+        .'<div id="mfsd-ptest-chat-source" style="display:none">' . $chat_html . '</div>'
+        .'<div id="mfsd-ptest-summary-chat-source" style="display:none">' . $summary_chat_html . '</div>';
     }
 
     /* ================================================================

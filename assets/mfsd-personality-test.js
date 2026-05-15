@@ -5,7 +5,8 @@
   const root = document.getElementById('mfsd-ptest-root');
   if (!root) return;
 
-  const chatSource = document.getElementById('mfsd-ptest-chat-source');
+  const chatSource    = document.getElementById('mfsd-ptest-chat-source');
+  const summarySource = document.getElementById('mfsd-ptest-summary-chat-source');
 
   let week      = cfg.week || 1;
   let questions = [];
@@ -546,6 +547,22 @@
       summaryCache = sd;
       hideLoading();
 
+      // For first-time students PHP had no stored summary at render time, so stamp it now.
+      // render_prompt() template tokens: {personality_type}, {disc_style}, {ai_summary}
+      if (summarySource && sd.ai_summary) {
+        var sumBotEl = summarySource.querySelector('.stevegpt-chatbot-container');
+        if (sumBotEl && !sumBotEl.getAttribute('data-context')) {
+          var p = (sd.mbti_type && typeof PROFILES !== 'undefined' && PROFILES[sd.mbti_type]) ? PROFILES[sd.mbti_type] : null;
+          var personalityType = p ? 'The ' + p.name + ' (' + p.family + ' family)' : (sd.mbti_type || '');
+          var discStyle = sd.disc_primary || '';
+          sumBotEl.setAttribute('data-context',
+            'Student\'s Who Am I Results:\n\nPersonality type: ' + personalityType +
+            '\nCommunication style: ' + discStyle +
+            '\n\n=== WHO AM I SUMMARY ===\n' + sd.ai_summary
+          );
+        }
+      }
+
       const wrap = el('div', 'rag-wrap');
       const card = el('div', 'rag-card');
       card.appendChild(el('h2', 'rag-title', 'Who Am I (Part 1) — Your Results'));
@@ -723,8 +740,8 @@
       card.appendChild(ds);
     }
 
-    // Chatbot - MOVE it instead of cloning to prevent duplicates
-    if (chatSource) {
+    // Summary chatbot — dedicated widget, separate from the question chatbot
+    if (summarySource) {
       const cp  = el('div', 'rag-ai-question');
       const cpt = el('p', '');
       cpt.style.cssText = 'margin:0;font-weight:600;';
@@ -733,33 +750,22 @@
       card.appendChild(cp);
 
       const cw = el('div', 'rag-chatwrap');
-      
-      // MOVE the chatbot (don't clone) - prevents duplicate containers
-      chatSource.style.display = 'block';
-      chatSource.id = 'mfsd-ptest-chat-summary';
-      
-      // Clear direct-child messages only — avoids gutting the typing indicator
-      const sumMsgWrap = chatSource.querySelector('.stevegpt-chat-messages');
+      summarySource.style.display = 'block';
+      summarySource.id = 'mfsd-ptest-chat-summary';
+
+      const sumMsgWrap = summarySource.querySelector('.stevegpt-chat-messages');
       if (sumMsgWrap) {
         const sumMsgs = sumMsgWrap.querySelectorAll(':scope > .stevegpt-message');
         const firstMsg = sumMsgs[0] || null;
         sumMsgs.forEach(function (m) { if (m !== firstMsg) m.remove(); });
       }
 
-      cw.appendChild(chatSource);
+      cw.appendChild(summarySource);
       card.appendChild(cw);
 
       setTimeout(function () {
-        var ce = document.getElementById('mfsd-ptest-chat-summary');
-        if (ce) {
-          const greeting = ce.querySelector('.stevegpt-message-text');
-          if (greeting && greeting.textContent.trim().match(/^How can I help/i)) {
-            greeting.textContent = "Hey! I'm SteveGPT. Want to know more about your personality type? Just ask!";
-          }
-          // Re-focus input so Enter key works immediately
-          var inp = ce.querySelector('.stevegpt-input-field');
-          if (inp) inp.focus();
-        }
+        var inp = document.querySelector('#mfsd-ptest-chat-summary .stevegpt-input-field');
+        if (inp) inp.focus();
       }, 500);
     }
 
