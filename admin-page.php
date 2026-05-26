@@ -12,21 +12,39 @@
 
     // Handle clear user data
     if (isset($_POST['mfsd_ptest_clear_user_data'])) {
-        check_admin_referer('mfsd_ptest_clear_user_' . $_POST['user_id']);
+        // NOTE: nonce action must match wp_nonce_field below — was previously broken
+        // ('mfsd_ptest_clear_user_' . user_id didn't match the static nonce field)
+        check_admin_referer('mfsd_ptest_clear_user');
         global $wpdb;
         $user_id = (int)$_POST['user_id'];
         $week = isset($_POST['week']) ? (int)$_POST['week'] : 0;
-        
-        $ans_table = $wpdb->prefix . 'mfsd_ptest_answers';
-        $res_table = $wpdb->prefix . 'mfsd_ptest_results';
-        
+
+        $ans_table      = $wpdb->prefix . 'mfsd_ptest_answers';
+        $res_table      = $wpdb->prefix . 'mfsd_ptest_results';
+        $progress_table = $wpdb->prefix . 'mfsd_task_progress';
+
         if ($week > 0) {
             $wpdb->delete($ans_table, array('user_id' => $user_id, 'week_num' => $week));
             $wpdb->delete($res_table, array('user_id' => $user_id, 'week_num' => $week));
+            // Clear the matching task progress entry so the Quest Log engine
+            // doesn't immediately re-award the Who Am I badge on next page load
+            if ($wpdb->get_var("SHOW TABLES LIKE '$progress_table'")) {
+                $wpdb->delete($progress_table, array(
+                    'student_id' => $user_id,
+                    'task_slug'  => 'personality_test_week_' . $week,
+                ));
+            }
             echo '<div class="notice notice-success"><p>Cleared Week ' . $week . ' data for User ID ' . $user_id . '</p></div>';
         } else {
             $wpdb->delete($ans_table, array('user_id' => $user_id));
             $wpdb->delete($res_table, array('user_id' => $user_id));
+            // Clear all personality test task progress for this user
+            if ($wpdb->get_var("SHOW TABLES LIKE '$progress_table'")) {
+                $wpdb->query($wpdb->prepare(
+                    "DELETE FROM `$progress_table` WHERE student_id = %d AND task_slug LIKE 'personality_test_week_%'",
+                    $user_id
+                ));
+            }
             echo '<div class="notice notice-success"><p>Cleared all test data for User ID ' . $user_id . '</p></div>';
         }
     }
@@ -36,11 +54,17 @@
         check_admin_referer('mfsd_ptest_clear_all');
         if ($_POST['confirm_clear'] === 'DELETE ALL DATA') {
             global $wpdb;
-            $ans_table = $wpdb->prefix . 'mfsd_ptest_answers';
-            $res_table = $wpdb->prefix . 'mfsd_ptest_results';
-            
+            $ans_table      = $wpdb->prefix . 'mfsd_ptest_answers';
+            $res_table      = $wpdb->prefix . 'mfsd_ptest_results';
+            $progress_table = $wpdb->prefix . 'mfsd_task_progress';
+
             $wpdb->query("TRUNCATE TABLE $ans_table");
             $wpdb->query("TRUNCATE TABLE $res_table");
+            // Also clear personality test task progress entries for ALL users
+            // so the Quest Log engine doesn't re-award Who Am I badges immediately
+            if ($wpdb->get_var("SHOW TABLES LIKE '$progress_table'")) {
+                $wpdb->query("DELETE FROM `$progress_table` WHERE task_slug LIKE 'personality_test_week_%'");
+            }
             echo '<div class="notice notice-success"><p><strong>All test data has been cleared!</strong></p></div>';
         } else {
             echo '<div class="notice notice-error"><p>Incorrect confirmation text. Data was not cleared.</p></div>';
@@ -458,8 +482,8 @@
                     </select>
                 </div>
 
-                <?php wp_nonce_field('mfsd_ptest_clear_user'); ?>
-                
+                <?php wp_nonce_field('mfsd_ptest_clear_user'); /* action matches check_admin_referer above */ ?>
+
                 <p>
                     <button type="submit" name="mfsd_ptest_clear_user_data" class="button button-secondary">
                         Clear User Data
