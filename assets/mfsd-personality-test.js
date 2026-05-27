@@ -1,9 +1,11 @@
 (function () {
   'use strict';
 
-  const cfg  = window.MFSD_PTEST_CFG || {};
-  const root = document.getElementById('mfsd-ptest-root');
+  const cfg          = window.MFSD_PTEST_CFG || {};
+  const root         = document.getElementById('mfsd-ptest-root');
   if (!root) return;
+
+  const isParentView = cfg.role === 'parent' && cfg.studentId > 0;
 
   const chatSource    = document.getElementById('mfsd-ptest-chat-source');
   const summarySource = document.getElementById('mfsd-ptest-summary-chat-source');
@@ -143,7 +145,9 @@
      ================================================================ */
   async function checkStatus() {
     try {
-      return await apiFetch(cfg.restUrlStatus + '?week=' + encodeURIComponent(week));
+      let url = cfg.restUrlStatus + '?week=' + encodeURIComponent(week);
+      if (isParentView) url += '&student_id=' + encodeURIComponent(cfg.studentId);
+      return await apiFetch(url);
     } catch (e) {
       console.error('Status check error:', e);
       return {status: 'not_started'};
@@ -158,6 +162,18 @@
 
     if (status.status === 'completed') {
       await renderSummary();
+      return;
+    }
+
+    // Parent view — student hasn't finished yet; show a simple placeholder.
+    if (isParentView) {
+      hideLoading();
+      const wrap = el('div', 'rag-wrap');
+      const card = el('div', 'rag-card');
+      card.appendChild(el('h2', 'rag-title', 'Who Am I — Results'));
+      card.appendChild(el('p', 'rag-msg', "This student hasn't completed the Who Am I quiz yet."));
+      wrap.appendChild(card);
+      root.replaceChildren(wrap);
       return;
     }
 
@@ -530,12 +546,14 @@
      RESULTS SCREEN 1 — Personality reveal
      ================================================================ */
   async function renderSummary() {
-    showLoading('Generating your results...');
+    showLoading(isParentView ? 'Loading results...' : 'Generating your results...');
     try {
+      const summaryBody = {week: week};
+      if (isParentView) summaryBody.student_id = cfg.studentId;
       const sd = await apiFetch(cfg.restUrlSummary, {
         method:  'POST',
         headers: {'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || ''},
-        body:    JSON.stringify({week: week})
+        body:    JSON.stringify(summaryBody)
       });
 
       if (!sd || !sd.ok) {

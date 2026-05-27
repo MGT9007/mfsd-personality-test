@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.5.9
+ * Version: 9.6.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '9.5.9';
+    const VERSION = '9.6.0';
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -264,16 +264,22 @@ final class MFSD_Personality_Test {
             }
         }
 
-        // Ordering gate
-        if ( function_exists( 'mfsd_get_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
-            $student_id = get_current_user_id();
-            $task_slug  = 'personality_test_week_' . $week;
-            $status     = mfsd_get_task_status( $student_id, $task_slug );
+        // Detect parent-portal view — same pattern as Word Association / Solution Lens.
+        $viewer_id         = get_current_user_id();
+        $requested_student = isset( $_GET['student_id'] ) ? (int) $_GET['student_id'] : 0;
+        $viewer_role       = get_user_meta( $viewer_id, 'mfsd_role', true ) ?: '';
+        $is_parent_view    = $viewer_role === 'parent'
+            || ( $requested_student > 0 && $requested_student !== $viewer_id );
+
+        // Ordering gate — skip entirely for parent view (lock is students-only).
+        if ( ! $is_parent_view && function_exists( 'mfsd_get_task_status' ) && get_option( 'mfsd_ptest_course_management', 1 ) ) {
+            $task_slug = 'personality_test_week_' . $week;
+            $status    = mfsd_get_task_status( $viewer_id, $task_slug );
             if ( $status === 'locked' ) {
                 if ( function_exists( 'mfsd_ordering_locked_message' ) ) return mfsd_ordering_locked_message( $task_slug );
                 return '<p style="text-align:center;padding:40px;color:#555;">This activity is not available yet. Please complete the previous activity first.</p>';
             }
-            if ( $status === 'available' ) mfsd_set_task_status( $student_id, $task_slug, 'in_progress' );
+            if ( $status === 'available' ) mfsd_set_task_status( $viewer_id, $task_slug, 'in_progress' );
         }
 
         $avatar_url = plugin_dir_url(__FILE__) . 'assets/personality-avatars.jpg';
@@ -290,6 +296,8 @@ final class MFSD_Personality_Test {
             'restUrlQuestionChat' => esc_url_raw(rest_url('mfsd-ptest/v1/question-chat')),
             'nonce'               => wp_create_nonce('wp_rest'),
             'week'                => $week,
+            'role'                => $is_parent_view ? 'parent' : '',
+            'studentId'           => $is_parent_view ? $requested_student : 0,
             'avatarImageUrl'      => $avatar_url,
             'avatarsBaseUrl'      => $avatars_base,
             'urlBadges'           => 'https://mfsd.me/badges/',
@@ -455,8 +463,25 @@ final class MFSD_Personality_Test {
 
     /* ── Status ── */
     public function api_status($req) {
-        $user_id = get_current_user_id();
-        $week = (int) $req->get_param('week') ?: 1;
+        $viewer_id        = get_current_user_id();
+        $week             = (int) $req->get_param('week') ?: 1;
+        $student_id_param = (int) $req->get_param('student_id');
+
+        // Parent viewing a linked student's status — verify link, use student's data.
+        if ( $student_id_param > 0 && $student_id_param !== $viewer_id ) {
+            global $wpdb;
+            $is_linked = (bool) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}mfsd_parent_student_links
+                 WHERE parent_user_id = %d AND student_user_id = %d AND link_status = 'active'",
+                $viewer_id, $student_id_param
+            ) );
+            if ( ! $is_linked ) {
+                return new WP_Error( 'forbidden', 'You are not linked to this student.', array( 'status' => 403 ) );
+            }
+            $user_id = $student_id_param;
+        } else {
+            $user_id = $viewer_id;
+        }
 
         global $wpdb;
         $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
@@ -551,15 +576,52 @@ final class MFSD_Personality_Test {
        SUMMARY + SCORING
        ================================================================ */
     public function api_summary($req) {
-        $user_id = get_current_user_id();
-        $week = (int) $req->get_param('week');
-        $force = $req->get_param('force_regenerate') === 'true';
+        $viewer_id        = get_current_user_id();
+        $week             = (int) $req->get_param('week');
+        $student_id_param = (int) $req->get_param('student_id');
+        $is_parent_call   = false;
+
+        // Parent viewing a linked student's results — verify link, use student's data.
+        // Parents always get cached results; AI generation is never triggered for them.
+        if ( $student_id_param > 0 && $student_id_param !== $viewer_id ) {
+            global $wpdb;
+            $is_linked = (bool) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}mfsd_parent_student_links
+                 WHERE parent_user_id = %d AND student_user_id = %d AND link_status = 'active'",
+                $viewer_id, $student_id_param
+            ) );
+            if ( ! $is_linked ) {
+                return new WP_Error( 'forbidden', 'You are not linked to this student.', array( 'status' => 403 ) );
+            }
+            $user_id      = $student_id_param;
+            $is_parent_call = true;
+        } else {
+            $user_id = $viewer_id;
+        }
+
+        $force = ( ! $is_parent_call ) && $req->get_param('force_regenerate') === 'true';
 
         global $wpdb;
         $ans_table = $wpdb->prefix . self::TBL_ANSWERS;
         $res_table = $wpdb->prefix . self::TBL_RESULTS;
 
         $cache_on = get_option('mfsd_ptest_cache_ai_summaries', '1') === '1';
+
+        // For parent calls always try the cache first; if nothing is cached, return a
+        // graceful "not available yet" rather than triggering AI generation.
+        if ($is_parent_call) {
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $res_table WHERE user_id = %d AND week_num = %d AND test_type = 'COMBINED'",
+                $user_id, $week), ARRAY_A);
+            if ($existing && !empty($existing['ai_summary'])) {
+                return array('ok' => true, 'mbti_type' => $existing['mbti_type'],
+                    'disc_scores' => array('D' => (float)$existing['disc_d_score'], 'I' => (float)$existing['disc_i_score'],
+                        'S' => (float)$existing['disc_s_score'], 'C' => (float)$existing['disc_c_score'],
+                        'primary' => $existing['disc_primary']),
+                    'ai_summary' => $existing['ai_summary'], 'cached' => true);
+            }
+            return new WP_Error( 'not_found', 'No completed results for this student yet.', array( 'status' => 404 ) );
+        }
 
         if ($cache_on && !$force) {
             $existing = $wpdb->get_row($wpdb->prepare(
