@@ -2,14 +2,26 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.6.0
+ * Version: 9.7.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '9.6.0';
+    const VERSION = '9.7.0';
+
+    /**
+     * SteveGPT integration slots — option suffix => fallback chatbot ID.
+     * Fallbacks are only used until the slot is saved in SteveGPT → Chatbots.
+     */
+    const STEVEGPT_SLOTS = array(
+        'intro'        => 'chatbot_69fb3aee4a0be',
+        'guidance'     => 'chatbot_69fb3b7fa0fa2',
+        'chatbot'      => 'chatbot_69eb7ca000e67',
+        'summary'      => 'chatbot_69fb3bf9a176a',
+        'summary_chat' => 'chatbot_6a066d0d7209c',
+    );
     const NONCE_ACTION = 'mfsd_ptest_nonce';
 
     const TBL_QUESTIONS = 'mfsd_ptest_questions';
@@ -27,6 +39,33 @@ final class MFSD_Personality_Test {
         add_shortcode('mfsd_personality_test', array($this,'shortcode'));
         add_action('rest_api_init', array($this,'register_routes'));
         add_action('admin_menu', array($this,'admin_menu'));
+        add_filter('stevegpt_plugin_integration_slots', array($this, 'register_stevegpt_slots'));
+    }
+
+    /* ================================================================
+       STEVEGPT INTEGRATION SLOTS
+       ================================================================ */
+    public function register_stevegpt_slots(array $slots): array {
+        $defs = array(
+            'intro'        => array('Quiz intro',         array()),
+            'guidance'     => array('Question guidance',  array('question_text')),
+            'chatbot'      => array('Question chatbot',   array()),
+            'summary'      => array('Results summary',    array()),
+            'summary_chat' => array('Results chatbot',    array('personality_type', 'disc_style', 'ai_summary')),
+        );
+        foreach ($defs as $key => $def) {
+            $slots[] = array(
+                'plugin' => 'Who Am I',
+                'role'   => $def[0],
+                'option' => 'mfsd_stevegpt_map_who_am_i_' . $key,
+                'tokens' => $def[1],
+            );
+        }
+        return $slots;
+    }
+
+    public function stevegpt_chatbot_id(string $slot): string {
+        return (string) get_option('mfsd_stevegpt_map_who_am_i_' . $slot, self::STEVEGPT_SLOTS[$slot] ?? '');
     }
 
     /* ================================================================
@@ -338,14 +377,14 @@ final class MFSD_Personality_Test {
         }
 
         // Question chatbot
-        $who_am_i_chatbot_id = get_option('mfsd_stevegpt_map_who_am_i_chatbot', 'chatbot_69eb7ca000e67');
+        $who_am_i_chatbot_id = $this->stevegpt_chatbot_id('chatbot');
         $chat_shortcode = $chat_context
             ? '[stevegpt_chatbot id="' . esc_attr($who_am_i_chatbot_id) . '" context="' . $chat_context . '"]'
             : '[stevegpt_chatbot id="' . esc_attr($who_am_i_chatbot_id) . '"]';
         $chat_html = do_shortcode($chat_shortcode);
 
         // Summary chatbot — use render_prompt() to inject the full results + AI summary
-        $summary_chatbot_id = get_option('mfsd_stevegpt_map_who_am_i_summary_chat', 'chatbot_6a066d0d7209c');
+        $summary_chatbot_id = $this->stevegpt_chatbot_id('summary_chat');
         $summary_context    = '';
         if ($stored_summary && class_exists('SteveGPT_Chatbot')) {
             try {
@@ -528,7 +567,7 @@ final class MFSD_Personality_Test {
         $prompt .= "Do NOT mention 'MBTI', 'Myers-Briggs', or 'DISC'. ";
         $prompt .= "Start your message with 'Steve says:' and keep the tone warm, encouraging, and age-appropriate.";
 
-        $intro = $this->call_ai($prompt, get_option('mfsd_stevegpt_map_who_am_i_intro', 'chatbot_69fb3aee4a0be'));
+        $intro = $this->call_ai($prompt, $this->stevegpt_chatbot_id('intro'));
         if (!$intro) {
             $intro = "Steve says: Hey there, superstar! You're about to take a fun quiz that helps you discover what makes YOU uniquely awesome. Each question gives you two choices — just pick whichever one feels most like you. There are no wrong answers, so relax and be yourself! Let's do this! 👍😊";
         }
@@ -542,7 +581,7 @@ final class MFSD_Personality_Test {
         $start = microtime(true);
 
         try {
-            $chatbot = SteveGPT_Chatbot::get(get_option('mfsd_stevegpt_map_who_am_i_guidance', 'chatbot_69fb3b7fa0fa2'));
+            $chatbot = SteveGPT_Chatbot::get($this->stevegpt_chatbot_id('guidance'));
             $prompt  = $chatbot->render_prompt(['question_text' => $question_text]);
             $guidance = $chatbot->query($prompt, $user_id);
             $this->log_ai_call('SUCCESS', 'OK', strlen($prompt), strlen($guidance), round((microtime(true) - $start) * 1000));
@@ -567,7 +606,7 @@ final class MFSD_Personality_Test {
         $prompt .= "Do NOT reference 'MBTI', 'Myers-Briggs', or 'DISC'. ";
         $prompt .= "Sign your response with '- SteveGPT' at the end.";
 
-        $response = $this->call_ai($prompt, get_option('mfsd_stevegpt_map_who_am_i_chatbot', 'chatbot_69eb7ca000e67'));
+        $response = $this->call_ai($prompt, $this->stevegpt_chatbot_id('chatbot'));
         return array('ok' => true,
             'response' => $response ?: "Just think about which option feels most like the real you — trust your gut! - SteveGPT");
     }
@@ -650,7 +689,7 @@ final class MFSD_Personality_Test {
         $disc_scores = $this->calculate_disc($disc_answers);
 
         $summary_prompt = $this->build_summary_prompt($mbti_type, $disc_scores, $week);
-        $ai_summary = $this->call_ai($summary_prompt, get_option('mfsd_stevegpt_map_who_am_i_summary', 'chatbot_69fb3bf9a176a'));
+        $ai_summary = $this->call_ai($summary_prompt, $this->stevegpt_chatbot_id('summary'));
 
         if (!$ai_summary || strlen($ai_summary) < 200) {
             $ai_summary = $this->generate_fallback_summary($mbti_type, $disc_scores, $week);
@@ -816,7 +855,7 @@ final class MFSD_Personality_Test {
     /* ================================================================
        AI CALL + LOGGING
        ================================================================ */
-    private function call_ai(string $prompt, string $chatbot_id = 'chatbot_69eb7ca000e67'): ?string {
+    private function call_ai(string $prompt, string $chatbot_id): ?string {
         $start   = microtime(true);
         $user_id = get_current_user_id() ?: 0;
         try {

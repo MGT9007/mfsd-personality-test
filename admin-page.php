@@ -577,11 +577,11 @@
             echo '<div class="ptest-add-form" style="background: #f0f8ff; border-left: 4px solid #2271b1;">';
             echo '<h3>AI Test Results</h3>';
             
-            if (!isset($GLOBALS['mwai'])) {
-                echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Available</strong></p>';
-                echo '<p>The AI Engine plugin is not active or not installed.</p>';
+            if (!class_exists('SteveGPT_Chatbot')) {
+                echo '<p style="color: red;"><strong>❌ SteveGPT NOT Available</strong></p>';
+                echo '<p>The SteveGPT (stevegtp) plugin is not active or not installed.</p>';
             } else {
-                echo '<p style="color: green;"><strong>✅ MWAI Plugin Available</strong></p>';
+                echo '<p style="color: green;"><strong>✅ SteveGPT Available</strong></p>';
                 
                 $test_plugin = MFSD_Personality_Test::instance();
                 $reflection = new ReflectionClass($test_plugin);
@@ -608,7 +608,7 @@
                 
                 try {
                     $start_time = microtime(true);
-                    $ai_response = $call_ai->invoke($test_plugin, $prompt);
+                    $ai_response = $call_ai->invoke($test_plugin, $prompt, $test_plugin->stevegpt_chatbot_id('summary'));
                     $elapsed = round((microtime(true) - $start_time) * 1000);
                     
                     echo '<h4>AI Response:</h4>';
@@ -657,14 +657,16 @@
 
         <!-- MWAI Status -->
         <div class="ptest-add-form">
-            <h3>MWAI Plugin Status</h3>
+            <h3>SteveGPT Status</h3>
             <?php
-            if (!isset($GLOBALS['mwai'])) {
-                echo '<p style="color: red;"><strong>❌ MWAI Plugin NOT Detected</strong></p>';
-                echo '<p>Please install and activate the <strong>AI Engine</strong> plugin.</p>';
+            if (!class_exists('SteveGPT_Chatbot')) {
+                echo '<p style="color: red;"><strong>❌ SteveGPT NOT Detected</strong></p>';
+                echo '<p>Please activate the <strong>SteveGPT (stevegtp)</strong> plugin.</p>';
             } else {
-                echo '<p style="color: green;"><strong>✅ MWAI Plugin Detected</strong></p>';
-                echo '<p style="color: green;"><strong>✅ MWAI Instance Available via $GLOBALS</strong></p>';
+                echo '<p style="color: green;"><strong>✅ SteveGPT Detected</strong></p>';
+                foreach (array_keys(MFSD_Personality_Test::STEVEGPT_SLOTS) as $slot) {
+                    echo '<p><strong>' . esc_html($slot) . ':</strong> <code>' . esc_html(MFSD_Personality_Test::instance()->stevegpt_chatbot_id($slot)) . '</code></p>';
+                }
             }
             ?>
         </div>
