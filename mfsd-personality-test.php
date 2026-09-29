@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MFSD Personality Test
  * Description: Standalone personality test plugin — "Who Am I (Part 1)" — with either/or personality questions, AI summaries, and tabbed results.
- * Version: 9.7.0
+ * Version: 10.0.0
  * Author: MisterT9007
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class MFSD_Personality_Test {
-    const VERSION = '9.7.0';
+    const VERSION = '10.0.0';
 
     /**
      * SteveGPT integration slots — option suffix => fallback chatbot ID.
@@ -805,8 +805,12 @@ final class MFSD_Personality_Test {
         return $prompt;
     }
 
-    private function get_mbti_type_context($type) {
-        $mbti_data = array(
+    /* ================================================================
+       TYPE DATA — public static so other MFSD plugins share one copy
+       (read via mfsd_get_personality_profile(), never directly in JS).
+       ================================================================ */
+    public static function mbti_type_data(): array {
+        return array(
             'ISTJ' => array('group'=>'Sentinel','nickname'=>'The Logistician','description'=>'Practical, fact-minded, and incredibly reliable. The rock-solid organizers who get things done right.','strengths'=>'Excellent at planning and organizing, super responsible and dependable, amazing attention to detail, loyal friend who keeps promises, calm under pressure','learning_style'=>'Learn best with clear structure, step-by-step instructions, and practical real-world examples. Love checklists and study schedules.','communication'=>'Direct, honest, and factual. Prefer clear conversations without drama. Thoughtful listeners who remember details.','careers'=>'Accounting, engineering, law enforcement, healthcare administration, project management, data analysis, architecture','teen_advice'=>'Your reliability is your superpower. Use your organizing skills for school projects and sports teams. Your consistency will take you far!'),
             'ISFJ' => array('group'=>'Sentinel','nickname'=>'The Defender','description'=>'Warm-hearted protectors incredibly dedicated to helping and supporting others. The caring friends who remember birthdays and always show up.','strengths'=>'Incredibly supportive and caring, excellent memory for details, hardworking and diligent, patient with others, great at creating harmony','learning_style'=>'Learn best in supportive environments with clear expectations. Prefer hands-on practice and working with study partners.','communication'=>'Warm, considerate, and thoughtful. Excellent listeners. Express care through actions more than words.','careers'=>'Nursing, teaching, counseling, social work, veterinary assistant, childcare, human resources','teen_advice'=>'Your kindness makes the world better. It\'s okay to say no sometimes and put yourself first. Your friends are lucky to have you!'),
             'INFJ' => array('group'=>'Diplomat','nickname'=>'The Advocate','description'=>'Quiet, mystical idealists with deep insights about people and a strong sense of purpose. Creative dreamers who want to make the world better.','strengths'=>'Incredibly insightful about people, creative problem-solvers, passionate about causes they believe in, great at inspiring others, visionary thinkers','learning_style'=>'Learn best through big-picture concepts and exploring "why" behind facts. Enjoy creative projects and subjects connected to helping people.','communication'=>'Prefer deep, meaningful one-on-one conversations. Express ideas through stories and creative writing. Great listeners.','careers'=>'Counseling, writing, psychology, teaching, social work, art therapy, environmental advocacy, coaching','teen_advice'=>'Your ability to understand people is rare and special. Your ideas can change the world, so don\'t be afraid to share them!'),
@@ -824,7 +828,30 @@ final class MFSD_Personality_Test {
             'ENFJ' => array('group'=>'Diplomat','nickname'=>'The Protagonist','description'=>'Charismatic, inspiring leaders who bring out the best in others. Natural mentors who see potential in everyone.','strengths'=>'Incredibly inspiring, exceptional communicators, deeply empathetic leaders, see potential in everyone, great at teaching and mentoring','learning_style'=>'Learn best through group discussions, teaching others, and meaningful material. Excel at presenting and collaborative projects.','communication'=>'Warm, persuasive, and highly expressive. Natural teachers and motivational speakers.','careers'=>'Teaching, counseling, human resources, public relations, coaching, psychology, non-profit leadership','teen_advice'=>'Your ability to inspire and lead is remarkable! Your encouragement changes lives. Your charisma and empathy will take you far!'),
             'ENTJ' => array('group'=>'Analyst','nickname'=>'The Commander','description'=>'Bold, strategic leaders with strong vision who make things happen. Determined commanders who set ambitious goals.','strengths'=>'Exceptional strategic thinking, confident leaders, decisive, efficient and goal-focused, excellent at organizing complex projects','learning_style'=>'Learn best through challenge, competition, and leadership opportunities. Excel at debates and presentations.','communication'=>'Direct, confident, and commanding. Natural at public speaking. Very goal-focused.','careers'=>'Executive leadership, entrepreneurship, law, engineering management, consulting, finance, business strategy','teen_advice'=>'Your leadership and strategic vision are powerful! Balance your drive with patience for different working styles. You\'re destined to lead!'),
         );
+    }
+
+    /** Avatar PNG filenames in assets/Avatars/ — matches the JS map, home widgets and Quest Log.
+     *  ESFP points at the file as actually named on disk ('Entertaioner.png'); the other maps
+     *  ask for 'Entertainer.png', which doesn't exist (flagged separately). */
+    const AVATAR_FILES = array(
+        'ISTJ' => 'Logistician.png',  'ISFJ' => 'Defender.png',     'ESTJ' => 'Executive.png',    'ESFJ' => 'Consul.png',
+        'INTJ' => 'Architect.png',    'INTP' => 'Logician.png',     'ENTJ' => 'Commander.png',    'ENTP' => 'Debater.png',
+        'INFJ' => 'Advocate.png',     'INFP' => 'Mediatorv3.png',   'ENFJ' => 'Protagonist.png',  'ENFP' => 'Campaigner.png',
+        'ISTP' => 'Virtuoso.png',     'ISFP' => 'Adventurer.png',   'ESTP' => 'Entrepreneur.png', 'ESFP' => 'Entertaioner.png',
+    );
+
+    public static function avatar_url($type): string {
+        $file = self::AVATAR_FILES[strtoupper((string) $type)] ?? '';
+        return $file ? plugin_dir_url(__FILE__) . 'assets/Avatars/' . $file : '';
+    }
+
+    public static function type_context($type) {
+        $mbti_data = self::mbti_type_data();
         return $mbti_data[$type] ?? array('group'=>'Unique','nickname'=>'The Individual','description'=>'A unique personality type','strengths'=>'Personal strengths','learning_style'=>'Individual learning preferences','communication'=>'Personal communication style','careers'=>'Various career options','teen_advice'=>'Embrace your unique qualities!');
+    }
+
+    private function get_mbti_type_context($type) {
+        return self::type_context($type);
     }
 
     private function get_disc_style_context($primary) {
@@ -939,3 +966,115 @@ final class MFSD_Personality_Test {
 }
 
 MFSD_Personality_Test::instance();
+
+/* ====================================================================
+   SHARED HELPERS — used by Dream & Junk Jobs, Life Wheel, Dream Life.
+   Spec: techspecs/PERSONALITY_PROFILE_HELPER_TECH_SPEC_v1_0_0.md
+   ==================================================================== */
+
+if ( ! function_exists( 'mfsd_ptest_is_test_mode' ) ) {
+    /**
+     * True when Who Am I is in test mode (AI summaries not cached/saved).
+     * Consuming plugins hide personality features from students in this case.
+     */
+    function mfsd_ptest_is_test_mode(): bool {
+        return get_option( 'mfsd_ptest_cache_ai_summaries', '1' ) !== '1';
+    }
+}
+
+if ( ! function_exists( 'mfsd_get_personality_profile' ) ) {
+    /**
+     * Student personality profile for use by other MFSD plugins.
+     * Returns null when there is no usable result (not done, or Who Am I in test mode).
+     * 'code' is for prompts only — never render it or return it over REST.
+     * Who Am I is the single source of truth: no fallback to wp_mfsd_mbti_results.
+     */
+    function mfsd_get_personality_profile( int $user_id ): ?array {
+        if ( $user_id <= 0 || mfsd_ptest_is_test_mode() ) return null;
+
+        global $wpdb;
+        $table = $wpdb->prefix . MFSD_Personality_Test::TBL_RESULTS;
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT week_num, test_type, mbti_type, mbti_details FROM $table
+             WHERE user_id = %d AND test_type IN ('MBTI','COMBINED')
+               AND mbti_type IS NOT NULL AND mbti_type <> ''
+             ORDER BY week_num DESC, FIELD(test_type, 'MBTI', 'COMBINED')",
+            $user_id
+        ), ARRAY_A );
+        if ( empty( $rows ) ) return null;
+
+        $week = (int) $rows[0]['week_num'];
+        $code = strtoupper( $rows[0]['mbti_type'] );
+        $data = MFSD_Personality_Test::mbti_type_data();
+        if ( ! preg_match( '/^[EI][SN][TF][JP]$/', $code ) || ! isset( $data[ $code ] ) ) return null;
+        $ctx = $data[ $code ];
+
+        // Raw answers: the MBTI row's mbti_details for the same week.
+        $raw = array();
+        foreach ( $rows as $r ) {
+            if ( (int) $r['week_num'] === $week && ! empty( $r['mbti_details'] ) ) {
+                $details = json_decode( $r['mbti_details'], true );
+                if ( ! empty( $details['raw_answers'] ) && is_array( $details['raw_answers'] ) ) {
+                    $raw = $details['raw_answers'];
+                    break;
+                }
+            }
+        }
+        if ( empty( $raw ) ) {
+            // Same Who Am I answers the result was calculated from.
+            $raw = $wpdb->get_results( $wpdb->prepare(
+                "SELECT mbti_axis, mbti_letter FROM {$wpdb->prefix}" . MFSD_Personality_Test::TBL_ANSWERS . "
+                 WHERE user_id = %d AND week_num = %d AND q_type = 'MBTI'",
+                $user_id, $week
+            ), ARRAY_A );
+        }
+
+        $counts = array();
+        foreach ( (array) $raw as $a ) {
+            $axis   = (string) ( $a['mbti_axis'] ?? '' );
+            $letter = strtoupper( (string) ( $a['mbti_letter'] ?? '' ) );
+            if ( $axis === '' || $letter === '' ) continue;
+            $counts[ $axis ][ $letter ] = ( $counts[ $axis ][ $letter ] ?? 0 ) + 1;
+        }
+
+        // axis number => [key, letter pair, lean words]
+        $axis_defs = array(
+            '1' => array( 'energy',    'E', 'I', array( 'E' => 'people',  'I' => 'own space' ) ),
+            '2' => array( 'info',      'S', 'N', array( 'S' => 'facts',   'N' => 'ideas' ) ),
+            '3' => array( 'decisions', 'T', 'F', array( 'T' => 'logic',   'F' => 'feelings' ) ),
+            '4' => array( 'structure', 'J', 'P', array( 'J' => 'planned', 'P' => 'flexible' ) ),
+        );
+        $axes = array();
+        foreach ( $axis_defs as $num => $def ) {
+            list( $key, $a, $b, $words ) = $def;
+            $letter = $code[ (int) $num - 1 ];
+            $other  = $letter === $a ? $b : $a;
+            $win    = $counts[ $num ][ $letter ] ?? 0;
+            $lose   = $counts[ $num ][ $other ]  ?? 0;
+            // 3–0 → strong, 2–1 (or unknown) → slight
+            $axes[ $key ] = array(
+                'lean'     => $words[ $letter ],
+                'strength' => ( $win > 0 && $lose === 0 ) ? 'strong' : 'slight',
+            );
+        }
+
+        $careers = array_values( array_filter( array_map( function ( $c ) {
+            return ucfirst( trim( $c ) );
+        }, explode( ',', (string) $ctx['careers'] ) ), 'strlen' ) );
+
+        return array(
+            'code'           => $code, // prompt only
+            'name'           => $ctx['nickname'],
+            'family'         => $ctx['group'],
+            'avatar_url'     => MFSD_Personality_Test::avatar_url( $code ),
+            'description'    => $ctx['description'],
+            'strengths'      => $ctx['strengths'],
+            'learning_style' => $ctx['learning_style'],
+            'communication'  => $ctx['communication'],
+            'careers'        => $careers,
+            'axes'           => $axes,
+            'week'           => $week,
+        );
+    }
+}
